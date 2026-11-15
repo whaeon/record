@@ -2,7 +2,15 @@ import { useEffect, useMemo, useState, type FormEvent } from "react"
 import { ChevronsUpDown } from "lucide-react"
 import { toast } from "sonner"
 import { createMetric } from "@/api/metrics"
-import { createStrategy, deleteStrategy, listStrategies, type Strategy } from "@/api/strategies"
+import {
+  createStrategy,
+  deleteStrategy,
+  listRevisions,
+  listStrategies,
+  updateStrategy,
+  type Strategy,
+  type StrategyRevision,
+} from "@/api/strategies"
 import { todayISO } from "@/lib/date"
 import { ApiError } from "@/lib/http"
 import { Button } from "@/components/ui/button"
@@ -29,6 +37,13 @@ import {
   CommandList,
 } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso)
@@ -50,6 +65,14 @@ export default function MetricsEntry() {
   const [creating, setCreating] = useState(false)
   const [pendingDelete, setPendingDelete] = useState<Strategy | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [editing, setEditing] = useState<Strategy | null>(null)
+  const [editName, setEditName] = useState("")
+  const [editDetail, setEditDetail] = useState("")
+  const [editNote, setEditNote] = useState("")
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [historyFor, setHistoryFor] = useState<Strategy | null>(null)
+  const [revisions, setRevisions] = useState<StrategyRevision[]>([])
+  const [loadingRevisions, setLoadingRevisions] = useState(false)
 
   const [date, setDate] = useState(todayISO)
   const [strategyId, setStrategyId] = useState<number>(0)
@@ -110,6 +133,65 @@ export default function MetricsEntry() {
       }
     } finally {
       setCreating(false)
+    }
+  }
+
+  function openEdit(s: Strategy) {
+    setEditing(s)
+    setEditName(s.name)
+    setEditDetail(s.current_detail)
+    setEditNote("")
+  }
+
+  async function onSaveEdit(e: FormEvent) {
+    e.preventDefault()
+    if (!editing) return
+    const trimmedName = editName.trim()
+    const trimmedDetail = editDetail.trim()
+    if (!trimmedName) {
+      toast.error("请填写交易策略名称")
+      return
+    }
+    if (!trimmedDetail) {
+      toast.error("策略内容不能为空")
+      return
+    }
+    if (strategies.some((s) => s.id !== editing.id && s.name === trimmedName)) {
+      toast.error("交易策略名称已存在")
+      return
+    }
+    setSavingEdit(true)
+    try {
+      await updateStrategy(editing.id, {
+        name: trimmedName,
+        current_detail: trimmedDetail,
+        note: editNote.trim(),
+      })
+      setEditing(null)
+      await refreshStrategies()
+      toast.success("已保存")
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        toast.error("交易策略名称已存在")
+      } else {
+        toast.error(err instanceof Error ? err.message : "保存失败")
+      }
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
+  async function openHistory(s: Strategy) {
+    setHistoryFor(s)
+    setLoadingRevisions(true)
+    setRevisions([])
+    try {
+      const list = await listRevisions(s.id)
+      setRevisions(list)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "加载改动记录失败")
+    } finally {
+      setLoadingRevisions(false)
     }
   }
 
@@ -215,14 +297,32 @@ export default function MetricsEntry() {
                         创建 {formatDateTime(s.created_at)} · 最后修改 {formatDateTime(s.updated_at)}
                       </p>
                     </div>
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => setPendingDelete(s)}
-                    >
-                      删除
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openEdit(s)}
+                      >
+                        编辑
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openHistory(s)}
+                      >
+                        改动记录
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => setPendingDelete(s)}
+                      >
+                        删除
+                      </Button>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -342,6 +442,84 @@ export default function MetricsEntry() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={editing !== null} onOpenChange={(open) => !open && setEditing(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>编辑交易策略</DialogTitle>
+          </DialogHeader>
+          <form className="grid gap-4" onSubmit={onSaveEdit}>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-name">名称</Label>
+              <Input
+                id="edit-name"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-detail">策略内容</Label>
+              <Textarea
+                id="edit-detail"
+                value={editDetail}
+                onChange={(e) => setEditDetail(e.target.value)}
+                rows={6}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-note">本次改动说明（可选）</Label>
+              <Input
+                id="edit-note"
+                value={editNote}
+                onChange={(e) => setEditNote(e.target.value)}
+                placeholder="仅内容变化时写入改动记录"
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditing(null)}>
+                取消
+              </Button>
+              <Button type="submit" disabled={savingEdit}>
+                {savingEdit ? "保存中..." : "保存"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={historyFor !== null} onOpenChange={(open) => !open && setHistoryFor(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              改动记录{historyFor ? ` · ${historyFor.name}` : ""}
+            </DialogTitle>
+          </DialogHeader>
+          {loadingRevisions ? (
+            <p className="text-sm text-muted-foreground">加载中...</p>
+          ) : revisions.length === 0 ? (
+            <p className="text-sm text-muted-foreground">暂无改动记录</p>
+          ) : (
+            <ol className="relative grid max-h-[60vh] gap-4 overflow-auto border-l pl-4">
+              {revisions.map((rev) => (
+                <li key={rev.id} className="grid gap-1">
+                  <div className="text-sm font-medium">{formatDateTime(rev.changed_at)}</div>
+                  {rev.note ? (
+                    <p className="text-sm text-muted-foreground">{rev.note}</p>
+                  ) : null}
+                  <details className="rounded-lg border bg-muted/30 p-2">
+                    <summary className="cursor-pointer text-sm text-muted-foreground">
+                      查看内容快照
+                    </summary>
+                    <pre className="mt-2 whitespace-pre-wrap break-words font-mono text-xs text-foreground">
+                      {rev.detail}
+                    </pre>
+                  </details>
+                </li>
+              ))}
+            </ol>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
