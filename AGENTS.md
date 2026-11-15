@@ -104,7 +104,7 @@
 - [x] 阶段 9：策略编辑与改动记录 UI
 - [x] 阶段 10：重构关联修复（全站改名 + 筛选下拉 + 空状态）
 - [x] 阶段 11：指标重复提交检测与修改交互
-- [ ] 阶段 12：日期下拉框（录入/筛选两种行为）
+- [x] 阶段 12：日期下拉框（录入/筛选两种行为）
 - [ ] 阶段 13：复盘记录左侧列表 + 新建入口
 
 ## 7. 变更记录
@@ -117,6 +117,7 @@
 2026-11-15 | 阶段9：策略编辑与改动记录 UI | 修改 frontend/src/api/strategies.ts、frontend/src/pages/MetricsEntry.tsx | 无 | tag: v9-strategy-edit
 2026-11-15 | 阶段10：重构关联修复 | 修改 frontend/src/App.tsx、frontend/src/pages/MetricsChart.tsx、frontend/src/api/metrics.ts、frontend/src/components/ui/chart.tsx | 无 | tag: v10-refactor-fix
 2026-11-15 | 阶段11：指标重复提交检测与修改交互 | 修改 frontend/src/lib/http.ts、frontend/src/api/metrics.ts、frontend/src/pages/MetricsEntry.tsx | 无 | tag: v11-dup-check
+2026-11-15 | 阶段12：日期下拉框（录入/筛选两种行为） | 新增 frontend/src/components/date-picker.tsx；修改 frontend/src/api/metrics.ts、frontend/src/pages/MetricsChart.tsx、frontend/src/pages/MetricsEntry.tsx | 无 | tag: v12-date-dropdown
 
 ## 8. 协作流程与阶段结束约定
 

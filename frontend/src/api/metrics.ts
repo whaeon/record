@@ -20,6 +20,11 @@ export type CreateMetricInput = {
   failed_limit_count: number
 }
 
+export async function listMetricDates(): Promise<string[]> {
+  const res = await fetch("/api/metrics/dates")
+  return parseJson<string[]>(res)
+}
+
 export async function listMetrics(params?: {
   from?: string
   to?: string

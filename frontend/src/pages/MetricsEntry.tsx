@@ -13,6 +13,7 @@ import {
 } from "@/api/strategies"
 import { todayISO } from "@/lib/date"
 import { ApiError } from "@/lib/http"
+import { DatePicker } from "@/components/date-picker"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -599,13 +600,7 @@ function MetricFields({
     <>
       <div className="grid gap-2">
         <Label htmlFor="date">日期</Label>
-        <Input
-          id="date"
-          type="date"
-          required
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-        />
+        <DatePicker id="date" mode="entry" value={date} onChange={setDate} />
       </div>
       <div className="grid gap-2">
         <Label htmlFor="total_picks">筛出票数</Label>

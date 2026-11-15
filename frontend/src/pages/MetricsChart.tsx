@@ -7,8 +7,9 @@ import {
   YAxis,
 } from "recharts"
 import { ChevronsUpDown } from "lucide-react"
-import { listMetrics, type StrategyMetric } from "@/api/metrics"
+import { listMetricDates, listMetrics, type StrategyMetric } from "@/api/metrics"
 import { listStrategies, type Strategy } from "@/api/strategies"
+import { DatePicker } from "@/components/date-picker"
 import { daysAgoISO, formatPercent, todayISO } from "@/lib/date"
 import {
   ChartContainer,
@@ -19,7 +20,6 @@ import {
 } from "@/components/ui/chart"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
   Command,
@@ -61,6 +61,7 @@ export default function MetricsChart() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [existingDates, setExistingDates] = useState<string[]>([])
 
   const selected = useMemo(
     () => strategies.find((s) => s.id === strategyId) ?? null,
@@ -70,6 +71,9 @@ export default function MetricsChart() {
   useEffect(() => {
     listStrategies()
       .then(setStrategies)
+      .catch(() => {})
+    listMetricDates()
+      .then(setExistingDates)
       .catch(() => {})
   }, [])
 
@@ -119,20 +123,22 @@ export default function MetricsChart() {
           <div className="flex flex-wrap items-end gap-4">
             <div className="grid gap-2">
               <Label htmlFor="from">开始日期</Label>
-              <Input
+              <DatePicker
                 id="from"
-                type="date"
+                mode="filter"
                 value={from}
-                onChange={(e) => setFrom(e.target.value)}
+                dates={existingDates}
+                onChange={setFrom}
               />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="to">结束日期</Label>
-              <Input
+              <DatePicker
                 id="to"
-                type="date"
+                mode="filter"
                 value={to}
-                onChange={(e) => setTo(e.target.value)}
+                dates={existingDates}
+                onChange={setTo}
               />
             </div>
             <div className="grid min-w-48 gap-2">
