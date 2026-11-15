@@ -56,7 +56,7 @@ export default function MetricsEntry() {
   }
 
   return (
-    <Card className="max-w-xl">
+    <Card className="mx-auto max-w-xl">
       <CardHeader>
         <CardTitle>指标录入</CardTitle>
       </CardHeader>
