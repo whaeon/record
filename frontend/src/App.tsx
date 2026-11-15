@@ -7,7 +7,7 @@ import MetricsChart from "@/pages/MetricsChart"
 import ReviewNotes from "@/pages/ReviewNotes"
 
 const navItems = [
-  { to: "/", label: "指标录入", icon: ClipboardList, end: true },
+  { to: "/", label: "交易策略", icon: ClipboardList, end: true },
   { to: "/chart", label: "历史图表", icon: LineChart, end: false },
   { to: "/notes", label: "复盘记录", icon: NotebookPen, end: false },
 ] as const

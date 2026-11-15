@@ -6,7 +6,9 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
-import { listMetrics, uniqueStrategyNames, type StrategyMetric } from "@/api/metrics"
+import { ChevronsUpDown } from "lucide-react"
+import { listMetrics, type StrategyMetric } from "@/api/metrics"
+import { listStrategies, type Strategy } from "@/api/strategies"
 import { daysAgoISO, formatPercent, todayISO } from "@/lib/date"
 import {
   ChartContainer,
@@ -15,9 +17,19 @@ import {
   ChartTooltip,
   type ChartConfig,
 } from "@/components/ui/chart"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
   Table,
   TableBody,
@@ -43,15 +55,21 @@ type ChartRow = StrategyMetric & {
 export default function MetricsChart() {
   const [from, setFrom] = useState(daysAgoISO(30))
   const [to, setTo] = useState(todayISO())
-  const [filterName, setFilterName] = useState("")
-  const [names, setNames] = useState<string[]>([])
+  const [strategyId, setStrategyId] = useState(0)
+  const [strategies, setStrategies] = useState<Strategy[]>([])
   const [rows, setRows] = useState<StrategyMetric[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [pickerOpen, setPickerOpen] = useState(false)
+
+  const selected = useMemo(
+    () => strategies.find((s) => s.id === strategyId) ?? null,
+    [strategies, strategyId]
+  )
 
   useEffect(() => {
-    listMetrics()
-      .then((list) => setNames(uniqueStrategyNames(list)))
+    listStrategies()
+      .then(setStrategies)
       .catch(() => {})
   }, [])
 
@@ -62,6 +80,7 @@ export default function MetricsChart() {
     listMetrics({
       from,
       to,
+      strategy_id: strategyId > 0 ? strategyId : undefined,
     })
       .then((list) => {
         if (!cancelled) setRows(list)
@@ -78,22 +97,16 @@ export default function MetricsChart() {
     return () => {
       cancelled = true
     }
-  }, [from, to])
-
-  const visibleRows = useMemo(() => {
-    const name = filterName.trim()
-    if (!name) return rows
-    return rows.filter((row) => row.strategy_name === name)
-  }, [rows, filterName])
+  }, [from, to, strategyId])
 
   const chartData = useMemo<ChartRow[]>(
     () =>
-      visibleRows.map((row) => ({
+      rows.map((row) => ({
         ...row,
         seal_rate_pct: row.seal_rate * 100,
         break_rate_pct: row.break_rate * 100,
       })),
-    [visibleRows]
+    [rows]
   )
 
   return (
@@ -123,19 +136,54 @@ export default function MetricsChart() {
               />
             </div>
             <div className="grid min-w-48 gap-2">
-              <Label htmlFor="sector-filter">板块</Label>
-              <Input
-                id="sector-filter"
-                list="chart-sector-options"
-                placeholder="全部板块"
-                value={filterName}
-                onChange={(e) => setFilterName(e.target.value)}
-              />
-              <datalist id="chart-sector-options">
-                {names.map((name) => (
-                  <option key={name} value={name} />
-                ))}
-              </datalist>
+              <Label>交易策略</Label>
+              <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={pickerOpen}
+                    className="w-full justify-between font-normal"
+                  >
+                    {selected ? selected.name : "全部交易策略"}
+                    <ChevronsUpDown className="size-4 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] p-0">
+                  <Command>
+                    <CommandInput placeholder="搜索交易策略" />
+                    <CommandList>
+                      <CommandEmpty>未找到交易策略</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          value="全部交易策略"
+                          data-checked={strategyId === 0 || undefined}
+                          onSelect={() => {
+                            setStrategyId(0)
+                            setPickerOpen(false)
+                          }}
+                        >
+                          全部交易策略
+                        </CommandItem>
+                        {strategies.map((s) => (
+                          <CommandItem
+                            key={s.id}
+                            value={s.name}
+                            data-checked={s.id === strategyId || undefined}
+                            onSelect={() => {
+                              setStrategyId(s.id)
+                              setPickerOpen(false)
+                            }}
+                          >
+                            {s.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
         </CardContent>
@@ -150,7 +198,7 @@ export default function MetricsChart() {
           {loading ? (
             <p className="text-sm text-muted-foreground">加载中...</p>
           ) : chartData.length === 0 ? (
-            <p className="text-sm text-muted-foreground">暂无数据</p>
+            <p className="text-sm text-muted-foreground">暂无指标数据，请先在交易策略页录入</p>
           ) : (
             <ChartContainer config={chartConfig} className="aspect-auto h-[360px] w-full">
               <LineChart accessibilityLayer data={chartData}>
@@ -233,7 +281,7 @@ export default function MetricsChart() {
             <TableHeader>
               <TableRow>
                 <TableHead>日期</TableHead>
-                <TableHead>板块</TableHead>
+                <TableHead>交易策略</TableHead>
                 <TableHead className="text-right">筛出票数</TableHead>
                 <TableHead className="text-right">涨停数</TableHead>
                 <TableHead className="text-right">炸板数</TableHead>
@@ -242,14 +290,14 @@ export default function MetricsChart() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {visibleRows.length === 0 ? (
+              {rows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-muted-foreground">
-                    暂无数据
+                    暂无指标数据
                   </TableCell>
                 </TableRow>
               ) : (
-                visibleRows.map((row) => (
+                rows.map((row) => (
                   <TableRow key={row.id}>
                     <TableCell>{row.date}</TableCell>
                     <TableCell>{row.strategy_name}</TableCell>

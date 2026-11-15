@@ -42,7 +42,3 @@ export async function createMetric(input: CreateMetricInput): Promise<StrategyMe
   })
   return parseJson<StrategyMetric>(res)
 }
-
-export function uniqueStrategyNames(list: StrategyMetric[]): string[] {
-  return [...new Set(list.map((m) => m.strategy_name))].sort()
-}
