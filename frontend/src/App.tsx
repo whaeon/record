@@ -1,6 +1,7 @@
 import { NavLink, Route, Routes } from "react-router-dom"
 import { ClipboardList, LineChart, NotebookPen } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { Toaster } from "@/components/ui/sonner"
 import MetricsEntry from "@/pages/MetricsEntry"
 import MetricsChart from "@/pages/MetricsChart"
 import ReviewNotes from "@/pages/ReviewNotes"
@@ -47,6 +48,7 @@ function App() {
           <Route path="/notes" element={<ReviewNotes />} />
         </Routes>
       </main>
+      <Toaster />
     </div>
   )
 }

@@ -1,7 +1,10 @@
-export type SectorMetric = {
+import { parseJson } from "@/lib/http"
+
+export type StrategyMetric = {
   id: number
   date: string
-  sector_name: string
+  strategy_id: number
+  strategy_name: string
   total_picks: number
   limit_up_count: number
   failed_limit_count: number
@@ -11,50 +14,35 @@ export type SectorMetric = {
 
 export type CreateMetricInput = {
   date: string
-  sector_name: string
+  strategy_id: number
   total_picks: number
   limit_up_count: number
   failed_limit_count: number
 }
 
-async function readError(res: Response): Promise<string> {
-  try {
-    const body = (await res.json()) as { error?: string }
-    return body.error ?? res.statusText
-  } catch {
-    return res.statusText
-  }
-}
-
 export async function listMetrics(params?: {
   from?: string
   to?: string
-  sector?: string
-}): Promise<SectorMetric[]> {
+  strategy_id?: number
+}): Promise<StrategyMetric[]> {
   const q = new URLSearchParams()
   if (params?.from) q.set("from", params.from)
   if (params?.to) q.set("to", params.to)
-  if (params?.sector) q.set("sector", params.sector)
+  if (params?.strategy_id) q.set("strategy_id", String(params.strategy_id))
   const qs = q.toString()
   const res = await fetch(qs ? `/api/metrics?${qs}` : "/api/metrics")
-  if (!res.ok) {
-    throw new Error(await readError(res))
-  }
-  return res.json() as Promise<SectorMetric[]>
+  return parseJson<StrategyMetric[]>(res)
 }
 
-export async function createMetric(input: CreateMetricInput): Promise<SectorMetric> {
+export async function createMetric(input: CreateMetricInput): Promise<StrategyMetric> {
   const res = await fetch("/api/metrics", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   })
-  if (!res.ok) {
-    throw new Error(await readError(res))
-  }
-  return res.json() as Promise<SectorMetric>
+  return parseJson<StrategyMetric>(res)
 }
 
-export function uniqueSectors(list: SectorMetric[]): string[] {
-  return [...new Set(list.map((m) => m.sector_name))].sort()
+export function uniqueStrategyNames(list: StrategyMetric[]): string[] {
+  return [...new Set(list.map((m) => m.strategy_name))].sort()
 }

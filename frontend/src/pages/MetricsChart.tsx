@@ -6,7 +6,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
-import { listMetrics, uniqueSectors, type SectorMetric } from "@/api/metrics"
+import { listMetrics, uniqueStrategyNames, type StrategyMetric } from "@/api/metrics"
 import { daysAgoISO, formatPercent, todayISO } from "@/lib/date"
 import {
   ChartContainer,
@@ -35,7 +35,7 @@ const chartConfig = {
   break_rate_pct: { label: "炸板率", color: "var(--chart-5)" },
 } satisfies ChartConfig
 
-type ChartRow = SectorMetric & {
+type ChartRow = StrategyMetric & {
   seal_rate_pct: number
   break_rate_pct: number
 }
@@ -43,15 +43,15 @@ type ChartRow = SectorMetric & {
 export default function MetricsChart() {
   const [from, setFrom] = useState(daysAgoISO(30))
   const [to, setTo] = useState(todayISO())
-  const [sector, setSector] = useState("")
-  const [sectors, setSectors] = useState<string[]>([])
-  const [rows, setRows] = useState<SectorMetric[]>([])
+  const [filterName, setFilterName] = useState("")
+  const [names, setNames] = useState<string[]>([])
+  const [rows, setRows] = useState<StrategyMetric[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
   useEffect(() => {
     listMetrics()
-      .then((list) => setSectors(uniqueSectors(list)))
+      .then((list) => setNames(uniqueStrategyNames(list)))
       .catch(() => {})
   }, [])
 
@@ -62,7 +62,6 @@ export default function MetricsChart() {
     listMetrics({
       from,
       to,
-      sector: sector.trim() || undefined,
     })
       .then((list) => {
         if (!cancelled) setRows(list)
@@ -79,16 +78,22 @@ export default function MetricsChart() {
     return () => {
       cancelled = true
     }
-  }, [from, to, sector])
+  }, [from, to])
+
+  const visibleRows = useMemo(() => {
+    const name = filterName.trim()
+    if (!name) return rows
+    return rows.filter((row) => row.strategy_name === name)
+  }, [rows, filterName])
 
   const chartData = useMemo<ChartRow[]>(
     () =>
-      rows.map((row) => ({
+      visibleRows.map((row) => ({
         ...row,
         seal_rate_pct: row.seal_rate * 100,
         break_rate_pct: row.break_rate * 100,
       })),
-    [rows]
+    [visibleRows]
   )
 
   return (
@@ -123,11 +128,11 @@ export default function MetricsChart() {
                 id="sector-filter"
                 list="chart-sector-options"
                 placeholder="全部板块"
-                value={sector}
-                onChange={(e) => setSector(e.target.value)}
+                value={filterName}
+                onChange={(e) => setFilterName(e.target.value)}
               />
               <datalist id="chart-sector-options">
-                {sectors.map((name) => (
+                {names.map((name) => (
                   <option key={name} value={name} />
                 ))}
               </datalist>
@@ -237,17 +242,17 @@ export default function MetricsChart() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.length === 0 ? (
+              {visibleRows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-muted-foreground">
                     暂无数据
                   </TableCell>
                 </TableRow>
               ) : (
-                rows.map((row) => (
+                visibleRows.map((row) => (
                   <TableRow key={row.id}>
                     <TableCell>{row.date}</TableCell>
-                    <TableCell>{row.sector_name}</TableCell>
+                    <TableCell>{row.strategy_name}</TableCell>
                     <TableCell className="text-right">{row.total_picks}</TableCell>
                     <TableCell className="text-right">{row.limit_up_count}</TableCell>
                     <TableCell className="text-right">{row.failed_limit_count}</TableCell>
