@@ -100,7 +100,7 @@ export default function ReviewNotes() {
         ) : (
           <div className="grid min-h-[480px] gap-4 md:grid-cols-2">
             <textarea
-              className="h-[480px] w-full resize-none rounded-lg border border-input bg-transparent p-3 font-mono text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              className="h-[480px] w-full resize-none rounded-lg border border-input bg-transparent p-3 font-mono text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder={"支持标题、加粗、斜体、列表、引用、代码与链接"}

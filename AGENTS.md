@@ -97,7 +97,7 @@
 - [x] 阶段 2：前端模块 1（旧模型）
 - [x] 阶段 3：前端模块 2（复盘记录 Markdown 分屏预览）
 - [PAUSED] 阶段 4：Wails 桌面壳 + 开机自启（暂停，暂不执行）
-- [ ] 阶段 5：主题切换系统
+- [x] 阶段 5：主题切换系统
 - [ ] 阶段 6：导航栏布局优化（图标+居中，文案暂不改）
 - [ ] 阶段 7：数据模型重构 —— 交易策略实体 + 改动记录（破坏性）
 - [ ] 阶段 8：策略管理基础 UI + 指标录入改 id 选择
@@ -109,6 +109,8 @@
 
 ## 7. 变更记录
 （每阶段完成后由 AI 追加：日期 / 阶段 / 新增或修改的文件 / 已知问题 / tag 名）
+
+2026-11-15 | 阶段5：主题切换系统 | 新增 frontend/src/lib/theme.ts、frontend/src/components/theme-provider.tsx、frontend/src/components/theme-toggle.tsx、frontend/src/components/ui/dropdown-menu.tsx；修改 frontend/index.html、frontend/src/main.tsx、frontend/src/App.tsx、frontend/src/index.css、frontend/src/pages/ReviewNotes.tsx | 无 | tag: v5-theme
 
 ## 8. 协作流程与阶段结束约定
 

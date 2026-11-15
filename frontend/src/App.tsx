@@ -1,12 +1,13 @@
 import { NavLink, Route, Routes } from "react-router-dom"
+import { ThemeToggle } from "@/components/theme-toggle"
 import MetricsEntry from "@/pages/MetricsEntry"
 import MetricsChart from "@/pages/MetricsChart"
 import ReviewNotes from "@/pages/ReviewNotes"
 
 function App() {
   return (
-    <div className="min-h-svh">
-      <header className="border-b">
+    <div className="min-h-svh bg-background text-foreground">
+      <header className="border-b bg-background">
         <div className="mx-auto flex max-w-6xl items-center gap-6 px-6 py-3">
           <span className="font-medium">交易复盘</span>
           <nav className="flex gap-4 text-sm">
@@ -36,6 +37,9 @@ function App() {
               复盘记录
             </NavLink>
           </nav>
+          <div className="ml-auto">
+            <ThemeToggle />
+          </div>
         </div>
       </header>
       <main className="mx-auto max-w-6xl px-6 py-6">
