@@ -18,6 +18,7 @@ func main() {
 	defer database.Close()
 
 	svc := service.New(
+		repository.NewStrategyRepository(database),
 		repository.NewMetricRepository(database),
 		repository.NewNoteRepository(database),
 	)

@@ -1,9 +1,26 @@
 package model
 
-type SectorMetric struct {
+type Strategy struct {
+	ID            int64  `json:"id"`
+	Name          string `json:"name"`
+	CurrentDetail string `json:"current_detail"`
+	CreatedAt     string `json:"created_at"`
+	UpdatedAt     string `json:"updated_at"`
+}
+
+type StrategyRevision struct {
+	ID         int64  `json:"id"`
+	StrategyID int64  `json:"strategy_id"`
+	Detail     string `json:"detail"`
+	Note       string `json:"note"`
+	ChangedAt  string `json:"changed_at"`
+}
+
+type StrategyMetric struct {
 	ID               int64   `json:"id"`
 	Date             string  `json:"date"`
-	SectorName       string  `json:"sector_name"`
+	StrategyID       int64   `json:"strategy_id"`
+	StrategyName     string  `json:"strategy_name"`
 	TotalPicks       int     `json:"total_picks"`
 	LimitUpCount     int     `json:"limit_up_count"`
 	FailedLimitCount int     `json:"failed_limit_count"`

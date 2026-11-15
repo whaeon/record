@@ -99,7 +99,7 @@
 - [PAUSED] 阶段 4：Wails 桌面壳 + 开机自启（暂停，暂不执行）
 - [x] 阶段 5：主题切换系统
 - [x] 阶段 6：导航栏布局优化（图标+居中，文案暂不改）
-- [ ] 阶段 7：数据模型重构 —— 交易策略实体 + 改动记录（破坏性）
+- [x] 阶段 7：数据模型重构 —— 交易策略实体 + 改动记录（破坏性）
 - [ ] 阶段 8：策略管理基础 UI + 指标录入改 id 选择
 - [ ] 阶段 9：策略编辑与改动记录 UI
 - [ ] 阶段 10：重构关联修复（全站改名 + 筛选下拉 + 空状态）
@@ -112,6 +112,7 @@
 
 2026-11-15 | 阶段5：主题切换系统 | 新增 frontend/src/lib/theme.ts、frontend/src/components/theme-provider.tsx、frontend/src/components/theme-toggle.tsx、frontend/src/components/ui/dropdown-menu.tsx；修改 frontend/index.html、frontend/src/main.tsx、frontend/src/App.tsx、frontend/src/index.css、frontend/src/pages/ReviewNotes.tsx | 无 | tag: v5-theme
 2026-11-15 | 阶段6：导航栏布局优化 | 修改 frontend/src/App.tsx、frontend/src/pages/MetricsEntry.tsx | 无 | tag: v6-nav
+2026-11-15 | 阶段7：数据模型重构 | 修改 main.go、internal/db/db.go、internal/model/model.go、internal/repository/repository.go、internal/service/service.go、internal/handler/handler.go | 无 | tag: v7-strategy-model
 
 ## 8. 协作流程与阶段结束约定
 
