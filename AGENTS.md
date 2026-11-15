@@ -49,14 +49,17 @@ PUT  /api/notes/:date       upsert 某日复盘
 - 不写单元测试，阶段内以本地 curl / 页面手动验证为准
 
 ## 6. 阶段进度
-- [ ] 阶段 0：数据模型与项目骨架
-- [ ] 阶段 1：Go 后端 API
-- [ ] 阶段 2：前端模块 1（录入 + 双 Y 轴图表）
-- [ ] 阶段 3：前端模块 2（复盘记录 Markdown 分屏预览）
+- [x] 阶段 0：数据模型与项目骨架
+- [x] 阶段 1：Go 后端 API
+- [x] 阶段 2：前端模块 1（录入 + 双 Y 轴图表）
+- [x] 阶段 3：前端模块 2（复盘记录 Markdown 分屏预览）
 - [ ] 阶段 4：Wails 桌面壳 + 开机自启
 
 ## 7. 变更记录
-（每阶段完成后追加：日期 / 阶段 / 新增或修改的文件 / 已知问题）
+- 2026-11-15 / 阶段 0 / 新增：go.mod go.sum main.go .gitignore internal/db/db.go internal/model/model.go internal/handler/handler.go internal/service/service.go internal/repository/repository.go frontend/（Vite React 19 + TS + Tailwind CSS v4 + shadcn/ui） / 已知问题：modernc.org/sqlite 锁定 v1.59.0（v1.60+ 要求 Go 1.26）；shadcn CLI 生成了 button 组件用于验证初始化；未实现任何 API 与业务页面
+- 2026-11-15 / 阶段 1 / 修改：main.go internal/model/model.go internal/handler/handler.go internal/service/service.go internal/repository/repository.go / 实现 POST/GET /api/metrics、GET/PUT /api/notes/:date；seal_rate、break_rate 在 service 层计算 / 已知问题：无
+- 2026-11-15 / 阶段 2 / 新增：frontend/src/api/metrics.ts frontend/src/lib/date.ts frontend/src/pages/MetricsEntry.tsx frontend/src/pages/MetricsChart.tsx frontend/src/components/ui/{chart,input,label,card,table}.tsx / 修改：frontend/src/App.tsx frontend/src/main.tsx frontend/package.json / 指标录入页 + 历史双 Y 轴图表（Tremor 无法配置双 Y 轴，改用 shadcn/ui chart + Recharts） / 已知问题：无
+- 2026-11-15 / 阶段 3 / 新增：frontend/src/api/notes.ts frontend/src/pages/ReviewNotes.tsx / 修改：frontend/src/App.tsx frontend/src/index.css frontend/package.json / 复盘记录 Markdown 左右分屏即时预览（纯 textarea + react-markdown + remark-gfm + prose） / 已知问题：无
 
 ## 8. 协作流程
 - 每阶段开始前先读取本文件，只执行当前未完成阶段，不修改已锁定项。
