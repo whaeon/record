@@ -290,6 +290,17 @@ func (s *Service) ListMetricDates() ([]string, error) {
 	return s.metrics.ListDates()
 }
 
+func (s *Service) ListNotes() ([]model.ReviewNote, error) {
+	list, err := s.notes.List()
+	if err != nil {
+		return nil, err
+	}
+	for i := range list {
+		list[i].Content = summarizeRunes(list[i].Content, 50)
+	}
+	return list, nil
+}
+
 func (s *Service) GetNote(date string) (*model.ReviewNote, error) {
 	if err := validateDate(date); err != nil {
 		return nil, err
@@ -334,6 +345,15 @@ func validateDate(date string) error {
 
 func nowISO() string {
 	return time.Now().UTC().Format(time.RFC3339)
+}
+
+func summarizeRunes(text string, max int) string {
+	t := strings.Join(strings.Fields(text), " ")
+	runes := []rune(t)
+	if len(runes) <= max {
+		return t
+	}
+	return string(runes[:max]) + "..."
 }
 
 func isUniqueConstraint(err error) bool {

@@ -32,6 +32,7 @@ func (h *Handler) Register(r *gin.Engine) {
 	api.POST("/metrics", h.CreateMetric)
 	api.PUT("/metrics/:id", h.UpdateMetric)
 
+	api.GET("/notes", h.ListNotes)
 	api.GET("/notes/:date", h.GetNote)
 	api.PUT("/notes/:date", h.UpsertNote)
 }
@@ -194,6 +195,15 @@ func (h *Handler) ListMetricDates(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, dates)
+}
+
+func (h *Handler) ListNotes(c *gin.Context) {
+	list, err := h.svc.ListNotes()
+	if err != nil {
+		writeError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, list)
 }
 
 func (h *Handler) GetNote(c *gin.Context) {

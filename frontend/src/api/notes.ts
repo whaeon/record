@@ -1,3 +1,5 @@
+import { parseJson } from "@/lib/http"
+
 export type ReviewNote = {
   id: number
   date: string
@@ -5,21 +7,14 @@ export type ReviewNote = {
   updated_at: string
 }
 
-async function readError(res: Response): Promise<string> {
-  try {
-    const body = (await res.json()) as { error?: string }
-    return body.error ?? res.statusText
-  } catch {
-    return res.statusText
-  }
+export async function listNotes(): Promise<ReviewNote[]> {
+  const res = await fetch("/api/notes")
+  return parseJson<ReviewNote[]>(res)
 }
 
 export async function getNote(date: string): Promise<ReviewNote> {
   const res = await fetch(`/api/notes/${date}`)
-  if (!res.ok) {
-    throw new Error(await readError(res))
-  }
-  return res.json() as Promise<ReviewNote>
+  return parseJson<ReviewNote>(res)
 }
 
 export async function saveNote(date: string, content: string): Promise<ReviewNote> {
@@ -28,8 +23,5 @@ export async function saveNote(date: string, content: string): Promise<ReviewNot
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ content }),
   })
-  if (!res.ok) {
-    throw new Error(await readError(res))
-  }
-  return res.json() as Promise<ReviewNote>
+  return parseJson<ReviewNote>(res)
 }

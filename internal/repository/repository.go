@@ -316,6 +316,26 @@ func NewNoteRepository(db *sql.DB) *NoteRepository {
 	return &NoteRepository{db: db}
 }
 
+func (r *NoteRepository) List() ([]model.ReviewNote, error) {
+	rows, err := r.db.Query(
+		`SELECT id, date, content, updated_at FROM review_notes ORDER BY date DESC`,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	list := make([]model.ReviewNote, 0)
+	for rows.Next() {
+		var n model.ReviewNote
+		if err := rows.Scan(&n.ID, &n.Date, &n.Content, &n.UpdatedAt); err != nil {
+			return nil, err
+		}
+		list = append(list, n)
+	}
+	return list, rows.Err()
+}
+
 func (r *NoteRepository) GetByDate(date string) (*model.ReviewNote, error) {
 	var n model.ReviewNote
 	err := r.db.QueryRow(
