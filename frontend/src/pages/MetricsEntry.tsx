@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react"
 import { ChevronsUpDown } from "lucide-react"
 import { toast } from "sonner"
-import { createMetric } from "@/api/metrics"
+import { createMetric, existingMetricFromConflict, updateMetric, type StrategyMetric } from "@/api/metrics"
 import {
   createStrategy,
   deleteStrategy,
@@ -81,6 +81,8 @@ export default function MetricsEntry() {
   const [failedLimitCount, setFailedLimitCount] = useState(0)
   const [submitting, setSubmitting] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [conflict, setConflict] = useState<StrategyMetric | null>(null)
+  const [updating, setUpdating] = useState(false)
 
   const empty = strategies.length === 0
   const selected = useMemo(
@@ -217,26 +219,51 @@ export default function MetricsEntry() {
       return
     }
     setSubmitting(true)
+    const payload = {
+      date,
+      strategy_id: strategyId,
+      total_picks: totalPicks,
+      limit_up_count: limitUpCount,
+      failed_limit_count: failedLimitCount,
+    }
     try {
-      await createMetric({
+      await createMetric(payload)
+      toast.success("已保存")
+      setTotalPicks(0)
+      setLimitUpCount(0)
+      setFailedLimitCount(0)
+    } catch (err) {
+      const existing = existingMetricFromConflict(err)
+      if (existing) {
+        setConflict(existing)
+      } else {
+        toast.error(err instanceof Error ? err.message : "提交失败")
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function onConfirmUpdate() {
+    if (!conflict || strategyId <= 0) return
+    setUpdating(true)
+    try {
+      await updateMetric(conflict.id, {
         date,
         strategy_id: strategyId,
         total_picks: totalPicks,
         limit_up_count: limitUpCount,
         failed_limit_count: failedLimitCount,
       })
-      toast.success("已保存")
+      setConflict(null)
       setTotalPicks(0)
       setLimitUpCount(0)
       setFailedLimitCount(0)
+      toast.success("已更新")
     } catch (err) {
-      if (err instanceof ApiError && err.status === 409) {
-        toast.error("该日期已有该交易策略的指标")
-      } else {
-        toast.error(err instanceof Error ? err.message : "提交失败")
-      }
+      toast.error(err instanceof Error ? err.message : "更新失败")
     } finally {
-      setSubmitting(false)
+      setUpdating(false)
     }
   }
 
@@ -417,6 +444,31 @@ export default function MetricsEntry() {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={conflict !== null} onOpenChange={(open) => !open && setConflict(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>该日期已有此交易策略的记录，是否修改？</AlertDialogTitle>
+            <AlertDialogDescription>
+              {conflict
+                ? `已有记录：筛出票数 ${conflict.total_picks}，涨停数 ${conflict.limit_up_count}，炸板数 ${conflict.failed_limit_count}。确认后将覆盖为当前表单中的数字。`
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={updating}>取消</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={updating}
+              onClick={(e) => {
+                e.preventDefault()
+                void onConfirmUpdate()
+              }}
+            >
+              {updating ? "更新中..." : "确认修改"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={pendingDelete !== null} onOpenChange={(open) => !open && setPendingDelete(null)}>
         <AlertDialogContent>

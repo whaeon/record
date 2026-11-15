@@ -1,4 +1,4 @@
-import { parseJson } from "@/lib/http"
+import { ApiError, parseJson } from "@/lib/http"
 
 export type StrategyMetric = {
   id: number
@@ -41,4 +41,25 @@ export async function createMetric(input: CreateMetricInput): Promise<StrategyMe
     body: JSON.stringify(input),
   })
   return parseJson<StrategyMetric>(res)
+}
+
+export async function updateMetric(
+  id: number,
+  input: CreateMetricInput
+): Promise<StrategyMetric> {
+  const res = await fetch(`/api/metrics/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  })
+  return parseJson<StrategyMetric>(res)
+}
+
+export function existingMetricFromConflict(err: unknown): StrategyMetric | null {
+  if (!(err instanceof ApiError) || err.status !== 409) return null
+  const body = err.body
+  if (!body || typeof body !== "object" || !("id" in body)) return null
+  const rec = body as Partial<StrategyMetric>
+  if (typeof rec.id !== "number") return null
+  return rec as StrategyMetric
 }

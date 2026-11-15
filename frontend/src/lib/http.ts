@@ -1,9 +1,11 @@
 export class ApiError extends Error {
   status: number
+  body: unknown
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, body?: unknown) {
     super(message)
     this.status = status
+    this.body = body
   }
 }
 
@@ -18,7 +20,17 @@ export async function readError(res: Response): Promise<string> {
 
 export async function parseJson<T>(res: Response): Promise<T> {
   if (!res.ok) {
-    throw new ApiError(res.status, await readError(res))
+    let body: unknown
+    try {
+      body = await res.json()
+    } catch {
+      throw new ApiError(res.status, res.statusText)
+    }
+    const message =
+      body && typeof body === "object" && "error" in body && typeof body.error === "string"
+        ? body.error
+        : res.statusText
+    throw new ApiError(res.status, message, body)
   }
   return res.json() as Promise<T>
 }
