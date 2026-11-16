@@ -650,10 +650,17 @@ function ChartGrid({
     <div className="grid gap-4 md:grid-cols-2">
       {groups.map((group) => (
         <section key={group.strategy.id} className="grid min-w-0 gap-2">
-          <h3 className="truncate text-sm font-medium">
-            {group.strategy.is_active
-              ? group.strategy.name
-              : `${group.strategy.name}（已停用）`}
+          <h3 className="flex min-w-0 items-baseline gap-2">
+            <span className="shrink-0 text-base font-medium">
+              {group.strategy.is_active
+                ? group.strategy.name
+                : `${group.strategy.name}（已停用）`}
+            </span>
+            {group.strategy.current_detail.trim() ? (
+              <span className="min-w-0 truncate text-xs font-normal text-muted-foreground">
+                {group.strategy.current_detail.trim().replace(/\s+/g, " ")}
+              </span>
+            ) : null}
           </h3>
           <div className="grid gap-2">
             {metrics.map((metric) => (

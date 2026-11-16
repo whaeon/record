@@ -1,6 +1,7 @@
 services:
   db:
     image: postgres:16
+    restart: unless-stopped
     environment:
       POSTGRES_USER: record
       POSTGRES_PASSWORD: record
@@ -19,6 +20,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    restart: unless-stopped
     environment:
       DATABASE_URL: postgres://record:record@db:5432/record?sslmode=disable
       DEFAULT_USER_ID: "1"
@@ -40,6 +42,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    restart: unless-stopped
     depends_on:
       api:
         condition: service_healthy
