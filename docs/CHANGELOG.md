@@ -6,6 +6,7 @@
 
 ## 2026-11
 
+- 2026-11-16 ｜ T-27：删除/弃用代码必须清掉 ｜ docs/WORKFLOW.md ｜ 验收通过 ｜ 无 ｜ 无契约变更；编码规范新增：被替换实现须同一任务内删除
 - 2026-11-16 ｜ T-26：source 字段前端展示 ｜ frontend/src/{api/metrics.ts,components/source-badge.tsx,pages/MetricsChart.tsx,pages/MetricsEntry.tsx}、internal/{db/schema.sql,model,repository}、docs/SPEC.md ｜ 验收通过 ｜ 无 ｜ GET /api/metrics 返回 source；strategy_id=all 当日任一条 auto 则聚合 source=auto
 - 2026-11-16 ｜ T-25：空状态 / 加载 / 错误处理统一 ｜ frontend/src/{App.tsx,api,lib/http.ts,lib/notify.ts,components/{empty-state,skeletons,connection-banner,ui/empty,ui/skeleton},pages} ｜ 验收通过 ｜ 无 ｜ 无 API 路径/参数变更、无数据结构变更
 - 2026-11-16 ｜ T-24：图表可读性强化 ｜ frontend/src/pages/MetricsChart.tsx ｜ 验收通过 ｜ 无 ｜ 无 API 路径/参数变更、无数据结构变更
