@@ -14,7 +14,13 @@ import { listMetricDates, listMetrics, type StrategyMetric } from "@/api/metrics
 import { listNotes } from "@/api/notes"
 import { listStrategies, type Strategy } from "@/api/strategies"
 import { DatePicker } from "@/components/date-picker"
-import { daysAgoISO, formatPercent, todayISO } from "@/lib/date"
+import {
+  formatPercent,
+  lastNTradingDays,
+  matchRangePreset,
+  thisMonthTradingRange,
+  type RangePreset,
+} from "@/lib/date"
 import {
   notesPath,
   parseDateParam,
@@ -76,10 +82,9 @@ type ChartRow = StrategyMetric & {
 export default function MetricsChart() {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
-  const defaultFrom = daysAgoISO(30)
-  const defaultTo = todayISO()
-  const from = parseDateParam(searchParams.get("from")) ?? defaultFrom
-  const to = parseDateParam(searchParams.get("to")) ?? defaultTo
+  const defaultRange = lastNTradingDays(20)
+  const from = parseDateParam(searchParams.get("from")) ?? defaultRange.from
+  const to = parseDateParam(searchParams.get("to")) ?? defaultRange.to
   const strategyId = parseStrategyParam(searchParams.get("strategy_id"))
   const focusDate = parseDateParam(searchParams.get("date"))
   const [strategies, setStrategies] = useState<Strategy[]>([])
@@ -91,6 +96,32 @@ export default function MetricsChart() {
   const [noteDates, setNoteDates] = useState<Set<string>>(new Set())
   const [pendingDate, setPendingDate] = useState<string | null>(null)
   const isMobile = useMediaQuery("(max-width: 767px)")
+
+  const activePreset = matchRangePreset(from, to, existingDates)
+
+  function applyPreset(preset: RangePreset) {
+    if (preset === "5") {
+      const r = lastNTradingDays(5)
+      patchParams({ from: r.from, to: r.to })
+      return
+    }
+    if (preset === "20") {
+      const r = lastNTradingDays(20)
+      patchParams({ from: r.from, to: r.to })
+      return
+    }
+    if (preset === "month") {
+      const r = thisMonthTradingRange()
+      patchParams({ from: r.from, to: r.to })
+      return
+    }
+    if (existingDates.length > 0) {
+      patchParams({ from: existingDates[0], to: existingDates[existingDates.length - 1] })
+      return
+    }
+    const r = lastNTradingDays(20)
+    patchParams({ from: r.from, to: r.to })
+  }
 
   function patchParams(next: { from?: string; to?: string; strategy_id?: StrategyFilter; date?: string | null }) {
     const q = new URLSearchParams()
@@ -177,6 +208,26 @@ export default function MetricsChart() {
           <CardTitle>筛选</CardTitle>
         </CardHeader>
         <CardContent>
+          <div className="mb-4 flex flex-wrap gap-2">
+            {(
+              [
+                ["5", "近 5 个交易日"],
+                ["20", "近 20 个交易日"],
+                ["month", "本月"],
+                ["all", "全部"],
+              ] as const
+            ).map(([key, label]) => (
+              <Button
+                key={key}
+                type="button"
+                variant={activePreset === key ? "default" : "outline"}
+                size="sm"
+                onClick={() => applyPreset(key)}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
           <div className="grid gap-4 sm:grid-cols-2 md:flex md:flex-wrap md:items-end">
             <div className="grid min-w-0 gap-2">
               <Label htmlFor="from">开始日期</Label>

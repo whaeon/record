@@ -6,6 +6,7 @@
 
 ## 2026-11
 
+- 2026-11-16 ｜ T-21：图表时间范围快捷选择 ｜ frontend/src/lib/date.ts、frontend/src/pages/MetricsChart.tsx ｜ 验收通过 ｜ 基础交易日历为周一至周五，不含节假日 ｜ 无 API 路径/参数变更、无数据结构变更
 - 2026-11-16 ｜ T-20：全策略汇总视图 ｜ internal/{repository,service}、frontend/src/{pages/MetricsChart,pages/ReviewNotes,api/metrics,lib/nav}.ts、docs/SPEC.md ｜ 验收通过 ｜ 无 ｜ GET /api/metrics 的 strategy_id=all 按日聚合
 - 2026-11-16 ｜ T-19：数据备份与导出 ｜ internal/backup、internal/handler、internal/service、main.go、Dockerfile、docker-compose.yml、frontend/src/{App.tsx,components/export-menu.tsx}、docs/SPEC.md ｜ 验收通过 ｜ 无 ｜ 新增 GET /api/export/metrics.csv、GET /api/export/notes.md
 - 2026-11-16 ｜ T-18：图表与复盘双向联动 ｜ frontend/src/pages/{MetricsChart,ReviewNotes}.tsx、frontend/src/lib/nav.ts ｜ 验收通过 ｜ 无 ｜ 无 API 路径/参数变更、无数据结构变更
