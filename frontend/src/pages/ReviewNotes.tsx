@@ -1,17 +1,11 @@
 import { useEffect, useRef, useState } from "react"
 import Markdown from "react-markdown"
 import remarkGfm from "remark-gfm"
-import { Menu, Plus } from "lucide-react"
+import { Plus } from "lucide-react"
 import { getNote, listNotes, saveNote, type ReviewNote } from "@/api/notes"
 import { todayISO } from "@/lib/date"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet"
 
 const markdownPlugins = [remarkGfm]
 const disallowedElements = [
@@ -23,6 +17,8 @@ const disallowedElements = [
   "th",
   "td",
 ]
+
+type MobilePane = "list" | "edit" | "preview"
 
 function summarize(text: string, max = 50): string {
   const t = text.replace(/\s+/g, " ").trim()
@@ -39,7 +35,7 @@ export default function ReviewNotes() {
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState("")
   const [error, setError] = useState("")
-  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [mobilePane, setMobilePane] = useState<MobilePane>("edit")
   const hideTimer = useRef<number>(0)
 
   function refreshNotes() {
@@ -83,7 +79,7 @@ export default function ReviewNotes() {
 
   function selectDate(next: string) {
     setDate(next)
-    setDrawerOpen(false)
+    setMobilePane("edit")
   }
 
   function onNewNote() {
@@ -116,27 +112,44 @@ export default function ReviewNotes() {
     />
   )
 
+  function renderEditor() {
+    return (
+      <textarea
+        className="h-[min(60vh,28rem)] w-full resize-none rounded-lg border border-input bg-transparent p-3 font-mono text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:h-[480px] dark:bg-input/30"
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
+        placeholder={"支持标题、加粗、斜体、列表、引用、代码与链接"}
+        spellCheck={false}
+      />
+    )
+  }
+
+  function renderPreview() {
+    return (
+      <div className="h-[min(60vh,28rem)] overflow-auto rounded-lg border bg-background p-3 md:h-[480px]">
+        <div className="prose prose-neutral dark:prose-invert max-w-none">
+          <Markdown
+            remarkPlugins={markdownPlugins}
+            skipHtml
+            disallowedElements={disallowedElements}
+            unwrapDisallowed
+          >
+            {content}
+          </Markdown>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)]">
-      <aside className="hidden min-h-[480px] rounded-xl border bg-card text-card-foreground lg:block">
+    <div className="grid gap-4 md:grid-cols-[16rem_minmax(0,1fr)]">
+      <aside className="hidden min-h-[480px] rounded-xl border bg-card text-card-foreground md:block">
         {listPanel}
       </aside>
 
       <Card>
         <CardHeader className="flex flex-row flex-wrap items-end justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="lg:hidden"
-              onClick={() => setDrawerOpen(true)}
-            >
-              <Menu />
-              <span className="sr-only">打开复盘列表</span>
-            </Button>
-            <CardTitle>复盘记录 {date}</CardTitle>
-          </div>
+          <CardTitle>复盘记录 {date}</CardTitle>
           <Button type="button" onClick={onSave} disabled={saving || loading}>
             {saving ? "保存中..." : "保存"}
           </Button>
@@ -147,39 +160,45 @@ export default function ReviewNotes() {
           {loading ? (
             <p className="text-sm text-muted-foreground">加载中...</p>
           ) : (
-            <div className="grid min-h-[480px] gap-4 md:grid-cols-2">
-              <textarea
-                className="h-[480px] w-full resize-none rounded-lg border border-input bg-transparent p-3 font-mono text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder={"支持标题、加粗、斜体、列表、引用、代码与链接"}
-                spellCheck={false}
-              />
-              <div className="h-[480px] overflow-auto rounded-lg border bg-background p-3">
-                <div className="prose prose-neutral dark:prose-invert max-w-none">
-                  <Markdown
-                    remarkPlugins={markdownPlugins}
-                    skipHtml
-                    disallowedElements={disallowedElements}
-                    unwrapDisallowed
+            <>
+              <div className="mb-3 grid grid-cols-3 gap-1 rounded-lg border p-1 md:hidden">
+                {(
+                  [
+                    ["list", "列表"],
+                    ["edit", "编辑"],
+                    ["preview", "预览"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setMobilePane(key)}
+                    className={[
+                      "inline-flex min-h-11 items-center justify-center rounded-md text-sm",
+                      mobilePane === key
+                        ? "bg-muted font-medium text-foreground"
+                        : "text-muted-foreground",
+                    ].join(" ")}
                   >
-                    {content}
-                  </Markdown>
-                </div>
+                    {label}
+                  </button>
+                ))}
               </div>
-            </div>
+              <div className="md:hidden">
+                {mobilePane === "list" ? (
+                  <div className="rounded-lg border">{listPanel}</div>
+                ) : null}
+                {mobilePane === "edit" ? renderEditor() : null}
+                {mobilePane === "preview" ? renderPreview() : null}
+              </div>
+              <div className="hidden min-h-[480px] gap-4 md:grid md:grid-cols-2">
+                {renderEditor()}
+                {renderPreview()}
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
-
-      <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-        <SheetContent side="left" className="p-0 lg:hidden">
-          <SheetHeader className="sr-only">
-            <SheetTitle>复盘记录列表</SheetTitle>
-          </SheetHeader>
-          {listPanel}
-        </SheetContent>
-      </Sheet>
     </div>
   )
 }
@@ -196,7 +215,7 @@ function NoteList({
   onNew: () => void
 }) {
   return (
-    <div className="flex h-full min-h-[480px] flex-col">
+    <div className="flex h-full min-h-[320px] flex-col md:min-h-[480px]">
       <div className="flex items-center justify-between gap-2 border-b p-3">
         <span className="text-sm font-medium">已有记录</span>
         <Button type="button" size="sm" onClick={onNew}>
@@ -216,7 +235,7 @@ function NoteList({
                   type="button"
                   onClick={() => onSelect(n.date)}
                   className={[
-                    "mb-1 w-full rounded-lg border px-3 py-2 text-left",
+                    "mb-1 flex min-h-11 w-full flex-col justify-center rounded-lg border px-3 py-2 text-left",
                     active
                       ? "border-ring bg-muted text-foreground"
                       : "border-transparent hover:bg-muted/60",

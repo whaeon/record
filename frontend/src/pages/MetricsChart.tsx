@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
+import { useMediaQuery } from "@/hooks/use-media-query"
 import {
   CartesianGrid,
   Line,
@@ -62,6 +63,7 @@ export default function MetricsChart() {
   const [error, setError] = useState("")
   const [pickerOpen, setPickerOpen] = useState(false)
   const [existingDates, setExistingDates] = useState<string[]>([])
+  const isMobile = useMediaQuery("(max-width: 767px)")
 
   const selected = useMemo(
     () => strategies.find((s) => s.id === strategyId) ?? null,
@@ -120,8 +122,8 @@ export default function MetricsChart() {
           <CardTitle>筛选</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap items-end gap-4">
-            <div className="grid gap-2">
+          <div className="grid gap-4 sm:grid-cols-2 md:flex md:flex-wrap md:items-end">
+            <div className="grid min-w-0 gap-2">
               <Label htmlFor="from">开始日期</Label>
               <DatePicker
                 id="from"
@@ -131,7 +133,7 @@ export default function MetricsChart() {
                 onChange={setFrom}
               />
             </div>
-            <div className="grid gap-2">
+            <div className="grid min-w-0 gap-2">
               <Label htmlFor="to">结束日期</Label>
               <DatePicker
                 id="to"
@@ -141,7 +143,7 @@ export default function MetricsChart() {
                 onChange={setTo}
               />
             </div>
-            <div className="grid min-w-48 gap-2">
+            <div className="grid min-w-0 gap-2 sm:col-span-2 md:min-w-48">
               <Label>交易策略</Label>
               <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
                 <PopoverTrigger asChild>
@@ -206,31 +208,45 @@ export default function MetricsChart() {
           ) : chartData.length === 0 ? (
             <p className="text-sm text-muted-foreground">暂无指标数据，请先在交易策略页录入</p>
           ) : (
-            <ChartContainer config={chartConfig} className="aspect-auto h-[360px] w-full">
-              <LineChart accessibilityLayer data={chartData}>
+            <ChartContainer config={chartConfig} className="aspect-auto h-[280px] w-full md:h-[360px]">
+              <LineChart
+                accessibilityLayer
+                data={chartData}
+                margin={isMobile ? { left: 0, right: 8, top: 8, bottom: 0 } : undefined}
+              >
                 <CartesianGrid vertical={false} />
                 <XAxis
                   dataKey="date"
                   tickLine={false}
                   axisLine={false}
                   tickMargin={8}
+                  interval={isMobile ? "preserveStartEnd" : undefined}
+                  minTickGap={isMobile ? 28 : 8}
+                  tickFormatter={(v: string) =>
+                    isMobile && v.length >= 10 ? v.slice(5) : v
+                  }
                 />
                 <YAxis
                   yAxisId="count"
                   tickLine={false}
                   axisLine={false}
-                  width={40}
+                  width={isMobile ? 28 : 40}
+                  tickCount={isMobile ? 4 : undefined}
                 />
                 <YAxis
                   yAxisId="rate"
                   orientation="right"
                   tickLine={false}
                   axisLine={false}
-                  width={48}
+                  width={isMobile ? 36 : 48}
                   domain={[0, 100]}
+                  tickCount={isMobile ? 4 : undefined}
                   tickFormatter={(v: number) => `${v}%`}
                 />
-                <ChartTooltip content={<DualAxisTooltip />} />
+                <ChartTooltip
+                  trigger={isMobile ? "click" : "hover"}
+                  content={<DualAxisTooltip />}
+                />
                 <ChartLegend content={<ChartLegendContent />} />
                 <Line
                   yAxisId="count"
@@ -238,7 +254,8 @@ export default function MetricsChart() {
                   dataKey="total_picks"
                   stroke="var(--color-total_picks)"
                   strokeWidth={2}
-                  dot={false}
+                  dot={isMobile ? { r: 4 } : false}
+                  activeDot={{ r: 6 }}
                 />
                 <Line
                   yAxisId="count"
@@ -247,6 +264,7 @@ export default function MetricsChart() {
                   stroke="var(--color-limit_up_count)"
                   strokeWidth={2}
                   dot={false}
+                  activeDot={{ r: 6 }}
                 />
                 <Line
                   yAxisId="count"
@@ -255,6 +273,7 @@ export default function MetricsChart() {
                   stroke="var(--color-failed_limit_count)"
                   strokeWidth={2}
                   dot={false}
+                  activeDot={{ r: 6 }}
                 />
                 <Line
                   yAxisId="rate"
@@ -263,6 +282,7 @@ export default function MetricsChart() {
                   stroke="var(--color-seal_rate_pct)"
                   strokeWidth={2}
                   dot={false}
+                  activeDot={{ r: 6 }}
                 />
                 <Line
                   yAxisId="rate"
@@ -271,6 +291,7 @@ export default function MetricsChart() {
                   stroke="var(--color-break_rate_pct)"
                   strokeWidth={2}
                   dot={false}
+                  activeDot={{ r: 6 }}
                 />
               </LineChart>
             </ChartContainer>
@@ -283,40 +304,74 @@ export default function MetricsChart() {
           <CardTitle>每日明细</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>日期</TableHead>
-                <TableHead>交易策略</TableHead>
-                <TableHead className="text-right">筛出票数</TableHead>
-                <TableHead className="text-right">涨停数</TableHead>
-                <TableHead className="text-right">炸板数</TableHead>
-                <TableHead className="text-right">封板率</TableHead>
-                <TableHead className="text-right">炸板率</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-muted-foreground">
-                    暂无指标数据
-                  </TableCell>
-                </TableRow>
-              ) : (
-                rows.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell>{row.date}</TableCell>
-                    <TableCell>{row.strategy_name}</TableCell>
-                    <TableCell className="text-right">{row.total_picks}</TableCell>
-                    <TableCell className="text-right">{row.limit_up_count}</TableCell>
-                    <TableCell className="text-right">{row.failed_limit_count}</TableCell>
-                    <TableCell className="text-right">{formatPercent(row.seal_rate)}</TableCell>
-                    <TableCell className="text-right">{formatPercent(row.break_rate)}</TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+          {rows.length === 0 ? (
+            <p className="text-sm text-muted-foreground">暂无指标数据</p>
+          ) : (
+            <>
+              <ul className="grid gap-3 md:hidden">
+                {rows.map((row) => (
+                  <li key={row.id} className="grid gap-2 rounded-lg border p-3">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="font-medium">{row.date}</span>
+                      <span className="truncate text-sm text-muted-foreground">
+                        {row.strategy_name}
+                      </span>
+                    </div>
+                    <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
+                      <div className="flex justify-between gap-2">
+                        <dt className="text-muted-foreground">筛出</dt>
+                        <dd className="tabular-nums">{row.total_picks}</dd>
+                      </div>
+                      <div className="flex justify-between gap-2">
+                        <dt className="text-muted-foreground">涨停</dt>
+                        <dd className="tabular-nums">{row.limit_up_count}</dd>
+                      </div>
+                      <div className="flex justify-between gap-2">
+                        <dt className="text-muted-foreground">炸板</dt>
+                        <dd className="tabular-nums">{row.failed_limit_count}</dd>
+                      </div>
+                      <div className="flex justify-between gap-2">
+                        <dt className="text-muted-foreground">封板率</dt>
+                        <dd className="tabular-nums">{formatPercent(row.seal_rate)}</dd>
+                      </div>
+                      <div className="col-span-2 flex justify-between gap-2">
+                        <dt className="text-muted-foreground">炸板率</dt>
+                        <dd className="tabular-nums">{formatPercent(row.break_rate)}</dd>
+                      </div>
+                    </dl>
+                  </li>
+                ))}
+              </ul>
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>日期</TableHead>
+                      <TableHead>交易策略</TableHead>
+                      <TableHead className="text-right">筛出票数</TableHead>
+                      <TableHead className="text-right">涨停数</TableHead>
+                      <TableHead className="text-right">炸板数</TableHead>
+                      <TableHead className="text-right">封板率</TableHead>
+                      <TableHead className="text-right">炸板率</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {rows.map((row) => (
+                      <TableRow key={row.id}>
+                        <TableCell>{row.date}</TableCell>
+                        <TableCell>{row.strategy_name}</TableCell>
+                        <TableCell className="text-right">{row.total_picks}</TableCell>
+                        <TableCell className="text-right">{row.limit_up_count}</TableCell>
+                        <TableCell className="text-right">{row.failed_limit_count}</TableCell>
+                        <TableCell className="text-right">{formatPercent(row.seal_rate)}</TableCell>
+                        <TableCell className="text-right">{formatPercent(row.break_rate)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>
@@ -343,7 +398,7 @@ function DualAxisTooltip({
     return null
   }
   return (
-    <div className="rounded-lg border bg-background px-3 py-2 text-xs shadow-sm">
+    <div className="max-w-[min(100vw-2rem,18rem)] rounded-lg border bg-background px-3 py-2 text-xs shadow-sm">
       <div className="mb-1 font-medium">{label}</div>
       {payload.map((item) => {
         const key = String(item.dataKey ?? item.name ?? "")

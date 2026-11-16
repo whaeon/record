@@ -105,7 +105,7 @@ export function DatePicker({
           role="combobox"
           aria-expanded={open}
           disabled={disabled}
-          className="w-full min-w-40 justify-between font-normal"
+          className="w-full min-w-0 justify-between font-normal md:min-w-40"
         >
           <span>{value || "选择日期"}</span>
           <Calendar className="size-4 opacity-50" />

@@ -325,7 +325,7 @@ export default function MetricsEntry() {
                         创建 {formatDateTime(s.created_at)} · 最后修改 {formatDateTime(s.updated_at)}
                       </p>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                     <div className="flex w-full flex-wrap gap-2 md:w-auto">
                       <Button
                         type="button"
                         variant="outline"
