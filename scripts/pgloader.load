@@ -1,0 +1,5 @@
+LOAD DATABASE
+     FROM sqlite:///data/data.db
+     INTO postgresql://record:record@db:5432/record
+
+ WITH data only, truncate, disable triggers, reset sequences;

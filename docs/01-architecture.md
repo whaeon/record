@@ -1,16 +1,15 @@
 # 01 · 架构与技术栈
 
 > 最后更新：2026-11-16 ｜ 本文件为锁定项，变更需在 changelog 说明理由。
-> 最后更新：2026-11-16
 
 ## 运行形态
-Windows 本地、单用户、非公网部署。当前为 Web 形态（本地起 Go 服务 + 浏览器访问），未来可选 Wails 打包为桌面应用（阶段 4，PAUSED）。
+Windows 本地、单用户、非公网部署。当前为 Docker Compose 三容器 Web 形态（db / api / web），浏览器访问 web。未来可选 Wails 打包为桌面应用（阶段 4，PAUSED）。
 
 ## 技术栈（锁定，不得擅自更换）
 - 后端：Go 1.25 + Gin
-- 数据库：SQLite，驱动必须使用 modernc.org/sqlite（纯 Go，禁止 mattn/go-sqlite3）
-- 数据库文件：开发阶段为项目根目录 data.db；Wails 打包后为 %APPDATA%\TradeReview\data.db
-- SQLite 连接必须执行 `PRAGMA foreign_keys = ON;`
+- 数据库：PostgreSQL 16；驱动 `github.com/jackc/pgx/v5/stdlib`（database/sql，禁止 ORM）
+- 连接：环境变量 `DATABASE_URL`；缺省 `postgres://record:record@127.0.0.1:5432/record?sslmode=disable`
+- 编排：Docker Compose（db healthcheck `pg_isready`；api `depends_on: condition: service_healthy`；api 连库 5 次退避重试后退出，不得 panic）
 - 前端：React 19 + TypeScript + Vite
 - 样式：Tailwind CSS（dark mode 使用 class 策略）
 - UI 组件：shadcn/ui（通过 CLI 添加）

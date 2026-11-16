@@ -357,5 +357,11 @@ func summarizeRunes(text string, max int) string {
 }
 
 func isUniqueConstraint(err error) bool {
-	return err != nil && strings.Contains(err.Error(), "UNIQUE constraint failed")
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "UNIQUE constraint failed") ||
+		strings.Contains(msg, "duplicate key value violates unique constraint") ||
+		strings.Contains(msg, "SQLSTATE 23505")
 }

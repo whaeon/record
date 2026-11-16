@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/whaeon/record/internal/db"
@@ -11,9 +12,14 @@ import (
 )
 
 func main() {
-	database, err := db.Open(db.DefaultPath)
+	dsn := os.Getenv("DATABASE_URL")
+	if dsn == "" {
+		dsn = db.DefaultDSN
+	}
+
+	database, err := db.Open(dsn)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("database: %v", err)
 	}
 	defer database.Close()
 

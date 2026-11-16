@@ -9,13 +9,12 @@
 
 | ID | 任务 | 类别 | 依赖 |
 |---|---|---|---|
-| T-14 | PostgreSQL 容器化 + repository 层迁移 | 架构地基 | — |
-| T-15 | 多用户 schema 隔离 + 默认用户免登录 | 架构地基 | T-14 |
-| T-16 | 手机端响应式适配 | 架构地基 | T-14 |
-| T-17 | 指标批量录入 | P0 效率 | T-14 |
-| T-18 | 图表与复盘双向联动 | P0 效率 | T-14 |
-| T-19 | 数据备份与导出 | P0 效率 | T-14 |
-| T-20 | 全策略汇总视图 | P1 分析 | T-14 |
+| T-15 | 多用户 schema 隔离 + 默认用户免登录 | 架构地基 | — |
+| T-16 | 手机端响应式适配 | 架构地基 | — |
+| T-17 | 指标批量录入 | P0 效率 | — |
+| T-18 | 图表与复盘双向联动 | P0 效率 | — |
+| T-19 | 数据备份与导出 | P0 效率 | — |
+| T-20 | 全策略汇总视图 | P1 分析 | — |
 | T-21 | 图表时间范围快捷选择 | P1 分析 | T-20 |
 | T-22 | 策略启用/停用 + 列表搜索 | P1 分析 | T-15 |
 | T-23 | 首屏核心指标条 | P2 打磨 | T-17, T-20 |
@@ -24,33 +23,6 @@
 | T-26 | source 字段前端展示 | P2 打磨 | — |
 
 ## 任务简报
-
-### T-14 · PostgreSQL 容器化 + repository 层迁移
-
-**目标**：把数据层从 SQLite 迁移到 PostgreSQL，用 Docker Compose 编排 db / api / web 三容器，handler 与 service 层逻辑不变。
-
-**范围边界**
-- 允许修改：docker-compose.yml、Dockerfile、repository 层、数据库连接初始化、docs/02、docs/03
-- 禁止修改：handler 层业务逻辑、service 层计算逻辑、前端页面
-- 禁止操作：不得引入 ORM（保持 database/sql + pgx）、不得改动表结构语义
-
-**关键约束**
-1. Compose 中 db 配置 healthcheck（pg_isready），api 使用 `depends_on: condition: service_healthy`。
-2. api 启动时对数据库连接做 5 次退避重试，失败后才退出，不得直接 panic。
-3. SQL 占位符从 `?` 改为 `$1` 形式，`AUTOINCREMENT` 改为 `GENERATED ALWAYS AS IDENTITY`。
-4. 数据迁移使用 pgloader，迁移前对 SQLite 执行只读快照备份。
-5. 不修改 02 中已确认的字段语义，仅更新方言相关描述。
-
-**验收标准（逐条自检并汇报）**
-1. `docker compose up` 后三容器均 healthy，api 日志无连接错误。
-2. 现有 metrics 与 notes 接口在 PostgreSQL 下 curl 返回与迁移前一致。
-3. pgloader 导入现有 data.db 后，四张表行数与源库一致。
-4. 停掉 db 容器后重启 api，api 重试 5 次后退出并输出明确错误日志，不 panic。
-5. `docs/02` 中 SQL 方言描述已更新，`docs/03` 接口路径与参数无变化。
-
-**完成后**：执行 04 的「验收通过后的清理动作」，然后停止等待验收。
-
----
 
 ### T-15 · 多用户 schema 隔离 + 默认用户免登录
 

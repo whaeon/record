@@ -4,8 +4,14 @@
 > 任何表结构变更必须同步更新本文件并在 06-changelog.md 记录。
 > 字段标注：［已确认］当前生效 ｜［待实现］已定义、尚未落地
 
+## SQL 方言（PostgreSQL）
+- 主键：`INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY`（对应原 SQLite `INTEGER PRIMARY KEY AUTOINCREMENT`）
+- 占位符：`$1` / `$2` / …（对应原 SQLite `?`）
+- 时间与日期字段仍为 TEXT，语义不变（ISO8601 / YYYY-MM-DD）
+- 外键、UNIQUE、索引定义与字段语义不变
+
 ## strategies（交易策略，可改名）［已确认］
-- id INTEGER PRIMARY KEY AUTOINCREMENT
+- id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY
 - name TEXT NOT NULL UNIQUE
 - current_detail TEXT NOT NULL　—— 仅存人类可读的策略说明；未来可执行参数另开字段/表
 - created_at TEXT NOT NULL（ISO8601）
@@ -15,7 +21,7 @@
 - 规则：删除必须带 confirm=true，级联删除关联 metrics 与 revisions
 
 ## strategy_revisions（策略内容改动记录）［已确认］
-- id INTEGER PRIMARY KEY AUTOINCREMENT
+- id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY
 - strategy_id INTEGER NOT NULL（FK strategies.id ON DELETE CASCADE）
 - detail TEXT NOT NULL　—— 该版本完整内容快照
 - note TEXT NOT NULL DEFAULT ''　—— 本次改动说明（可选）
@@ -24,7 +30,7 @@
 - 规则：创建策略时自动插入首条；只改名不改内容不生成；内容未变不生成
 
 ## strategy_metrics（策略每日指标）［已确认］
-- id INTEGER PRIMARY KEY AUTOINCREMENT
+- id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY
 - date TEXT NOT NULL（YYYY-MM-DD）
 - strategy_id INTEGER NOT NULL（FK strategies.id ON DELETE CASCADE）
 - total_picks INTEGER NOT NULL DEFAULT 0
@@ -37,7 +43,7 @@
 - 规则：PUT 更新时若原 source 为 auto，更新后置为 manual
 
 ## review_notes（复盘记录）［已确认］
-- id INTEGER PRIMARY KEY AUTOINCREMENT
+- id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY
 - date TEXT NOT NULL UNIQUE（YYYY-MM-DD）
 - content TEXT NOT NULL DEFAULT ''
 - updated_at TEXT NOT NULL（ISO8601）
