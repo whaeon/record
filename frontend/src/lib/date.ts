@@ -41,6 +41,10 @@ export function lastTradingDayOnOrBefore(iso: string): string {
   return cur
 }
 
+export function previousTradingDay(iso: string): string {
+  return lastTradingDayOnOrBefore(shiftISO(iso, -1))
+}
+
 export function lastNTradingDays(n: number, end = todayISO()): { from: string; to: string } {
   const to = lastTradingDayOnOrBefore(end)
   let from = to

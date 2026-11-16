@@ -21,6 +21,7 @@ import {
 import { todayISO } from "@/lib/date"
 import { ApiError } from "@/lib/http"
 import { DatePicker } from "@/components/date-picker"
+import { TodayStats } from "@/components/today-stats"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -148,6 +149,7 @@ export default function MetricsEntry() {
   const [batchUpdating, setBatchUpdating] = useState(false)
   const [batchCreatedCount, setBatchCreatedCount] = useState(0)
   const skipBatchCloseToast = useRef(false)
+  const [statsTick, setStatsTick] = useState(0)
 
   const empty = strategies.length === 0
   const activeStrategies = useMemo(() => strategies.filter((s) => s.is_active), [strategies])
@@ -328,6 +330,7 @@ export default function MetricsEntry() {
     }
     try {
       await createMetric(payload)
+      setStatsTick((n) => n + 1)
       toast.success("已保存")
       setTotalPicks(0)
       setLimitUpCount(0)
@@ -359,6 +362,7 @@ export default function MetricsEntry() {
       setTotalPicks(0)
       setLimitUpCount(0)
       setFailedLimitCount(0)
+      setStatsTick((n) => n + 1)
       toast.success("已更新")
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "更新失败")
@@ -443,6 +447,7 @@ export default function MetricsEntry() {
         }
       }
       clearBatchRows(createdIds)
+      if (created > 0) setStatsTick((n) => n + 1)
       if (conflicts.length > 0) {
         setBatchCreatedCount(created)
         setBatchConflicts(conflicts)
@@ -477,6 +482,7 @@ export default function MetricsEntry() {
       clearBatchRows(updatedIds)
       skipBatchCloseToast.current = true
       setBatchConflicts([])
+      if (updated > 0) setStatsTick((n) => n + 1)
       toast.success(`成功 ${batchCreatedCount} 条，更新 ${updated} 条`)
       setBatchCreatedCount(0)
     } finally {
@@ -486,6 +492,7 @@ export default function MetricsEntry() {
 
   return (
     <div className="mx-auto grid max-w-5xl gap-6">
+      <TodayStats refreshToken={statsTick} />
       <Card id="strategy-create">
         <CardHeader>
           <CardTitle>交易策略</CardTitle>
@@ -730,7 +737,7 @@ export default function MetricsEntry() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card id="metric-entry">
         <CardHeader>
           <CardTitle>指标录入</CardTitle>
         </CardHeader>
