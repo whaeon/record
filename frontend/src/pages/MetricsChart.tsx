@@ -5,6 +5,7 @@ import {
   CartesianGrid,
   Line,
   LineChart,
+  ReferenceArea,
   ReferenceLine,
   XAxis,
   YAxis,
@@ -31,12 +32,12 @@ import {
 import {
   ChartContainer,
   ChartLegend,
-  ChartLegendContent,
   ChartTooltip,
   type ChartConfig,
 } from "@/components/ui/chart"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
   Command,
@@ -74,6 +75,34 @@ const chartConfig = {
   break_rate_pct: { label: "炸板率", color: "var(--chart-5)" },
 } satisfies ChartConfig
 
+const LEFT_KEYS = ["total_picks", "limit_up_count", "failed_limit_count"] as const
+const RIGHT_KEYS = ["seal_rate_pct", "break_rate_pct"] as const
+const SEAL_THRESHOLD_KEY = "chart.sealRateThreshold"
+const DEFAULT_SEAL_THRESHOLD = 60
+
+function clampThreshold(n: number): number {
+  if (!Number.isFinite(n)) return DEFAULT_SEAL_THRESHOLD
+  return Math.min(100, Math.max(0, Math.round(n)))
+}
+
+function loadSealThreshold(): number {
+  try {
+    const raw = localStorage.getItem(SEAL_THRESHOLD_KEY)
+    if (raw == null) return DEFAULT_SEAL_THRESHOLD
+    return clampThreshold(Number(raw))
+  } catch {
+    return DEFAULT_SEAL_THRESHOLD
+  }
+}
+
+function saveSealThreshold(n: number) {
+  try {
+    localStorage.setItem(SEAL_THRESHOLD_KEY, String(n))
+  } catch {
+    return
+  }
+}
+
 type ChartRow = StrategyMetric & {
   seal_rate_pct: number
   break_rate_pct: number
@@ -95,7 +124,16 @@ export default function MetricsChart() {
   const [existingDates, setExistingDates] = useState<string[]>([])
   const [noteDates, setNoteDates] = useState<Set<string>>(new Set())
   const [pendingDate, setPendingDate] = useState<string | null>(null)
+  const [sealThreshold, setSealThreshold] = useState(loadSealThreshold)
+  const [thresholdDraft, setThresholdDraft] = useState(String(loadSealThreshold()))
   const isMobile = useMediaQuery("(max-width: 767px)")
+
+  function applySealThreshold(raw: string) {
+    const next = clampThreshold(Number(raw))
+    setSealThreshold(next)
+    setThresholdDraft(String(next))
+    saveSealThreshold(next)
+  }
 
   const activePreset = matchRangePreset(from, to, existingDates)
 
@@ -308,8 +346,34 @@ export default function MetricsChart() {
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="has-data-[slot=card-action]:grid-cols-[1fr_auto]">
           <CardTitle>历史走势</CardTitle>
+          <CardAction>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="seal-threshold" className="whitespace-nowrap text-xs text-muted-foreground">
+                封板率阈值
+              </Label>
+              <Input
+                id="seal-threshold"
+                type="number"
+                min={0}
+                max={100}
+                step={1}
+                inputMode="numeric"
+                className="h-8 w-16 md:h-8"
+                value={thresholdDraft}
+                onChange={(e) => setThresholdDraft(e.target.value)}
+                onBlur={() => applySealThreshold(thresholdDraft)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.currentTarget.blur()
+                  }
+                }}
+                aria-label="封板率阈值百分比"
+              />
+              <span className="text-xs text-muted-foreground">%</span>
+            </div>
+          </CardAction>
         </CardHeader>
         <CardContent>
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
@@ -322,7 +386,7 @@ export default function MetricsChart() {
               <LineChart
                 accessibilityLayer
                 data={chartData}
-                margin={isMobile ? { left: 0, right: 8, top: 8, bottom: 0 } : undefined}
+                margin={isMobile ? { left: 0, right: 8, top: 18, bottom: 0 } : { right: 16, top: 18 }}
                 onClick={onChartClick}
               >
                 <CartesianGrid vertical={false} />
@@ -354,6 +418,38 @@ export default function MetricsChart() {
                   tickCount={isMobile ? 4 : undefined}
                   tickFormatter={(v: number) => `${v}%`}
                 />
+                <ReferenceArea
+                  yAxisId="rate"
+                  y1={0}
+                  y2={sealThreshold}
+                  fill="#16a34a"
+                  fillOpacity={isMobile ? 0.12 : 0.08}
+                  strokeOpacity={0}
+                  ifOverflow="visible"
+                />
+                <ReferenceArea
+                  yAxisId="rate"
+                  y1={sealThreshold}
+                  y2={100}
+                  fill="#dc2626"
+                  fillOpacity={isMobile ? 0.12 : 0.08}
+                  strokeOpacity={0}
+                  ifOverflow="visible"
+                />
+                <ReferenceLine
+                  yAxisId="rate"
+                  y={sealThreshold}
+                  stroke="#dc2626"
+                  strokeDasharray="6 4"
+                  strokeWidth={isMobile ? 1.5 : 1}
+                  ifOverflow="visible"
+                  label={{
+                    value: `封板率 ${sealThreshold}%`,
+                    position: "insideTopRight",
+                    fill: "var(--muted-foreground)",
+                    fontSize: isMobile ? 10 : 11,
+                  }}
+                />
                 <ChartTooltip
                   trigger={isMobile ? "click" : "hover"}
                   content={<DualAxisTooltip />}
@@ -366,7 +462,7 @@ export default function MetricsChart() {
                     ifOverflow="visible"
                   />
                 ) : null}
-                <ChartLegend content={<ChartLegendContent />} />
+                <ChartLegend content={<AxisAwareLegend />} />
                 <Line
                   yAxisId="count"
                   type="monotone"
@@ -541,6 +637,46 @@ type TooltipItem = {
   name?: string
   value?: number | string
   color?: string
+}
+
+type LegendItem = {
+  dataKey?: string | number
+  value?: string
+  color?: string
+  type?: string
+}
+
+function AxisAwareLegend({ payload }: { payload?: LegendItem[] }) {
+  if (!payload?.length) return null
+  const visible = payload.filter((item) => item.type !== "none")
+  const left = visible.filter((item) => LEFT_KEYS.includes(String(item.dataKey) as (typeof LEFT_KEYS)[number]))
+  const right = visible.filter((item) => RIGHT_KEYS.includes(String(item.dataKey) as (typeof RIGHT_KEYS)[number]))
+
+  function group(title: string, items: LegendItem[]) {
+    if (items.length === 0) return null
+    return (
+      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="text-[10px] tracking-wide text-muted-foreground">{title}</span>
+        {items.map((item) => {
+          const key = String(item.dataKey ?? item.value ?? "")
+          const cfg = chartConfig[key as keyof typeof chartConfig]
+          return (
+            <span key={key} className="flex items-center gap-1.5">
+              <span className="size-2 shrink-0 rounded-[2px]" style={{ backgroundColor: item.color }} />
+              <span>{cfg?.label ?? key}</span>
+            </span>
+          )
+        })}
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center gap-1 pt-3 text-xs sm:flex-row sm:flex-wrap sm:gap-x-6 sm:gap-y-1">
+      {group("左轴 · 数量", left)}
+      {group("右轴 · 比率", right)}
+    </div>
+  )
 }
 
 function DualAxisTooltip({
