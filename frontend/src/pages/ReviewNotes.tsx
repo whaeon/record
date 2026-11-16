@@ -1,9 +1,12 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import Markdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { Plus } from "lucide-react"
+import { listMetrics, type StrategyMetric } from "@/api/metrics"
 import { getNote, listNotes, saveNote, type ReviewNote } from "@/api/notes"
-import { todayISO } from "@/lib/date"
+import { daysAgoISO, formatPercent, todayISO } from "@/lib/date"
+import { chartPath, ensureRange, parseDateParam, parseStrategyParam } from "@/lib/nav"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
@@ -27,8 +30,34 @@ function summarize(text: string, max = 50): string {
   return `${t.slice(0, max)}...`
 }
 
+function summarizeMetrics(rows: StrategyMetric[]): {
+  total_picks: number
+  limit_up_count: number
+  seal_rate: number
+  break_rate: number
+} | null {
+  if (rows.length === 0) return null
+  const total_picks = rows.reduce((s, r) => s + r.total_picks, 0)
+  const limit_up_count = rows.reduce((s, r) => s + r.limit_up_count, 0)
+  const failed_limit_count = rows.reduce((s, r) => s + r.failed_limit_count, 0)
+  return {
+    total_picks,
+    limit_up_count,
+    seal_rate: total_picks > 0 ? limit_up_count / total_picks : 0,
+    break_rate:
+      limit_up_count + failed_limit_count > 0
+        ? failed_limit_count / (limit_up_count + failed_limit_count)
+        : 0,
+  }
+}
+
 export default function ReviewNotes() {
-  const [date, setDate] = useState(todayISO)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const date = parseDateParam(searchParams.get("date")) ?? todayISO()
+  const from = parseDateParam(searchParams.get("from")) ?? daysAgoISO(30)
+  const to = parseDateParam(searchParams.get("to")) ?? todayISO()
+  const strategyId = parseStrategyParam(searchParams.get("strategy_id"))
   const [content, setContent] = useState("")
   const [notes, setNotes] = useState<ReviewNote[]>([])
   const [loading, setLoading] = useState(false)
@@ -36,7 +65,18 @@ export default function ReviewNotes() {
   const [message, setMessage] = useState("")
   const [error, setError] = useState("")
   const [mobilePane, setMobilePane] = useState<MobilePane>("edit")
+  const [dayMetrics, setDayMetrics] = useState<StrategyMetric[]>([])
   const hideTimer = useRef<number>(0)
+
+  function patchDate(next: string) {
+    const q = new URLSearchParams(searchParams)
+    q.set("date", next)
+    q.set("from", from)
+    q.set("to", to)
+    if (strategyId > 0) q.set("strategy_id", String(strategyId))
+    else q.delete("strategy_id")
+    setSearchParams(q, { replace: true })
+  }
 
   function refreshNotes() {
     listNotes()
@@ -77,13 +117,38 @@ export default function ReviewNotes() {
     }
   }, [])
 
+  useEffect(() => {
+    let cancelled = false
+    listMetrics({
+      from: date,
+      to: date,
+      strategy_id: strategyId > 0 ? strategyId : undefined,
+    })
+      .then((list) => {
+        if (!cancelled) setDayMetrics(list)
+      })
+      .catch(() => {
+        if (!cancelled) setDayMetrics([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [date, strategyId])
+
+  const summary = useMemo(() => summarizeMetrics(dayMetrics), [dayMetrics])
+
   function selectDate(next: string) {
-    setDate(next)
+    patchDate(next)
     setMobilePane("edit")
   }
 
   function onNewNote() {
     selectDate(todayISO())
+  }
+
+  function goToChart() {
+    const range = ensureRange(from, to, date)
+    navigate(chartPath({ ...range, strategy_id: strategyId, date }))
   }
 
   async function onSave() {
@@ -155,6 +220,34 @@ export default function ReviewNotes() {
           </Button>
         </CardHeader>
         <CardContent>
+          <button
+            type="button"
+            onClick={goToChart}
+            className="mb-4 grid w-full min-h-11 gap-1 rounded-lg border p-3 text-left hover:bg-muted/50"
+          >
+            {summary ? (
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm md:grid-cols-4">
+                <div className="flex justify-between gap-2 md:block">
+                  <dt className="text-muted-foreground">涨停数</dt>
+                  <dd className="tabular-nums font-medium">{summary.limit_up_count}</dd>
+                </div>
+                <div className="flex justify-between gap-2 md:block">
+                  <dt className="text-muted-foreground">筛出数</dt>
+                  <dd className="tabular-nums font-medium">{summary.total_picks}</dd>
+                </div>
+                <div className="flex justify-between gap-2 md:block">
+                  <dt className="text-muted-foreground">封板率</dt>
+                  <dd className="tabular-nums font-medium">{formatPercent(summary.seal_rate)}</dd>
+                </div>
+                <div className="flex justify-between gap-2 md:block">
+                  <dt className="text-muted-foreground">炸板率</dt>
+                  <dd className="tabular-nums font-medium">{formatPercent(summary.break_rate)}</dd>
+                </div>
+              </dl>
+            ) : (
+              <p className="text-sm text-muted-foreground">该日暂无指标，点击返回图表</p>
+            )}
+          </button>
           {error ? <p className="mb-3 text-sm text-destructive">{error}</p> : null}
           {message ? <p className="mb-3 text-sm text-muted-foreground">{message}</p> : null}
           {loading ? (

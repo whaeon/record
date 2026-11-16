@@ -6,6 +6,7 @@
 
 ## 2026-11
 
+- 2026-11-16 ｜ T-18：图表与复盘双向联动 ｜ frontend/src/pages/{MetricsChart,ReviewNotes}.tsx、frontend/src/lib/nav.ts ｜ 验收通过 ｜ 无 ｜ 无 API 路径/参数变更、无数据结构变更
 - 2026-11-16 ｜ T-17：指标批量录入 ｜ frontend/src/pages/MetricsEntry.tsx ｜ 验收通过 ｜ 无 ｜ 无 API 路径/参数变更、无数据结构变更
 - 2026-11-16 ｜ T-16：手机端响应式适配 ｜ frontend/src/App.tsx、frontend/src/pages/{MetricsChart,MetricsEntry,ReviewNotes}.tsx、frontend/src/components/{date-picker,ui/button,ui/input}.tsx、frontend/src/index.css、frontend/src/hooks/use-media-query.ts ｜ 验收通过 ｜ 无 ｜ 无 API 路径/参数变更、无数据结构变更
 - 2026-11-16 ｜ T-15：多用户 schema 隔离 + 默认用户免登录 ｜ internal/auth、internal/db、internal/repository、internal/handler、internal/service、main.go、docker-compose.yml、docs/SPEC.md ｜ 验收通过 ｜ 本环境无 Docker，按 WORKFLOW C 用本机 PostgreSQL 15 等价验证；`docker compose up` 待有 Docker 的环境再跑 ｜ 新增 public.users 与 user_<id> schema 隔离；auth 中间件读 DEFAULT_USER_ID（缺省 1）；无 API 路径/参数变更

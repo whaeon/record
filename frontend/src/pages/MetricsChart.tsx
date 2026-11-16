@@ -1,17 +1,21 @@
 import { useEffect, useMemo, useState } from "react"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import {
   CartesianGrid,
   Line,
   LineChart,
+  ReferenceLine,
   XAxis,
   YAxis,
 } from "recharts"
 import { ChevronsUpDown } from "lucide-react"
 import { listMetricDates, listMetrics, type StrategyMetric } from "@/api/metrics"
+import { listNotes } from "@/api/notes"
 import { listStrategies, type Strategy } from "@/api/strategies"
 import { DatePicker } from "@/components/date-picker"
 import { daysAgoISO, formatPercent, todayISO } from "@/lib/date"
+import { notesPath, parseDateParam, parseStrategyParam } from "@/lib/nav"
 import {
   ChartContainer,
   ChartLegend,
@@ -39,6 +43,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 const chartConfig = {
   total_picks: { label: "筛出票数", color: "var(--chart-1)" },
@@ -54,16 +68,34 @@ type ChartRow = StrategyMetric & {
 }
 
 export default function MetricsChart() {
-  const [from, setFrom] = useState(daysAgoISO(30))
-  const [to, setTo] = useState(todayISO())
-  const [strategyId, setStrategyId] = useState(0)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const defaultFrom = daysAgoISO(30)
+  const defaultTo = todayISO()
+  const from = parseDateParam(searchParams.get("from")) ?? defaultFrom
+  const to = parseDateParam(searchParams.get("to")) ?? defaultTo
+  const strategyId = parseStrategyParam(searchParams.get("strategy_id"))
+  const focusDate = parseDateParam(searchParams.get("date"))
   const [strategies, setStrategies] = useState<Strategy[]>([])
   const [rows, setRows] = useState<StrategyMetric[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [pickerOpen, setPickerOpen] = useState(false)
   const [existingDates, setExistingDates] = useState<string[]>([])
+  const [noteDates, setNoteDates] = useState<Set<string>>(new Set())
+  const [pendingDate, setPendingDate] = useState<string | null>(null)
   const isMobile = useMediaQuery("(max-width: 767px)")
+
+  function patchParams(next: { from?: string; to?: string; strategy_id?: number; date?: string | null }) {
+    const q = new URLSearchParams()
+    q.set("from", next.from ?? from)
+    q.set("to", next.to ?? to)
+    const sid = next.strategy_id ?? strategyId
+    if (sid > 0) q.set("strategy_id", String(sid))
+    const d = next.date === undefined ? focusDate : next.date
+    if (d) q.set("date", d)
+    setSearchParams(q, { replace: true })
+  }
 
   const selected = useMemo(
     () => strategies.find((s) => s.id === strategyId) ?? null,
@@ -76,6 +108,9 @@ export default function MetricsChart() {
       .catch(() => {})
     listMetricDates()
       .then(setExistingDates)
+      .catch(() => {})
+    listNotes()
+      .then((list) => setNoteDates(new Set(list.filter((n) => n.content.trim()).map((n) => n.date))))
       .catch(() => {})
   }, [])
 
@@ -115,6 +150,21 @@ export default function MetricsChart() {
     [rows]
   )
 
+  function goToNote(date: string) {
+    if (noteDates.has(date)) {
+      navigate(notesPath({ date, from, to, strategy_id: strategyId }))
+      return
+    }
+    setPendingDate(date)
+  }
+
+  function onChartClick(state: unknown) {
+    if (!state || typeof state !== "object") return
+    const payload = (state as { activePayload?: { payload?: { date?: string } }[] }).activePayload
+    const date = payload?.[0]?.payload?.date
+    if (date) goToNote(date)
+  }
+
   return (
     <div className="grid gap-6">
       <Card>
@@ -130,7 +180,7 @@ export default function MetricsChart() {
                 mode="filter"
                 value={from}
                 dates={existingDates}
-                onChange={setFrom}
+                onChange={(v) => patchParams({ from: v })}
               />
             </div>
             <div className="grid min-w-0 gap-2">
@@ -140,7 +190,7 @@ export default function MetricsChart() {
                 mode="filter"
                 value={to}
                 dates={existingDates}
-                onChange={setTo}
+                onChange={(v) => patchParams({ to: v })}
               />
             </div>
             <div className="grid min-w-0 gap-2 sm:col-span-2 md:min-w-48">
@@ -168,7 +218,7 @@ export default function MetricsChart() {
                           value="全部交易策略"
                           data-checked={strategyId === 0 || undefined}
                           onSelect={() => {
-                            setStrategyId(0)
+                            patchParams({ strategy_id: 0 })
                             setPickerOpen(false)
                           }}
                         >
@@ -180,7 +230,7 @@ export default function MetricsChart() {
                             value={s.name}
                             data-checked={s.id === strategyId || undefined}
                             onSelect={() => {
-                              setStrategyId(s.id)
+                              patchParams({ strategy_id: s.id })
                               setPickerOpen(false)
                             }}
                           >
@@ -213,6 +263,7 @@ export default function MetricsChart() {
                 accessibilityLayer
                 data={chartData}
                 margin={isMobile ? { left: 0, right: 8, top: 8, bottom: 0 } : undefined}
+                onClick={onChartClick}
               >
                 <CartesianGrid vertical={false} />
                 <XAxis
@@ -247,6 +298,14 @@ export default function MetricsChart() {
                   trigger={isMobile ? "click" : "hover"}
                   content={<DualAxisTooltip />}
                 />
+                {focusDate ? (
+                  <ReferenceLine
+                    x={focusDate}
+                    stroke="var(--foreground)"
+                    strokeDasharray="4 4"
+                    ifOverflow="visible"
+                  />
+                ) : null}
                 <ChartLegend content={<ChartLegendContent />} />
                 <Line
                   yAxisId="count"
@@ -310,9 +369,21 @@ export default function MetricsChart() {
             <>
               <ul className="grid gap-3 md:hidden">
                 {rows.map((row) => (
-                  <li key={row.id} className="grid gap-2 rounded-lg border p-3">
+                  <li
+                    key={row.id}
+                    className={[
+                      "grid gap-2 rounded-lg border p-3",
+                      row.date === focusDate ? "border-ring bg-muted/40" : "",
+                    ].join(" ")}
+                  >
                     <div className="flex items-baseline justify-between gap-2">
-                      <span className="font-medium">{row.date}</span>
+                      <button
+                        type="button"
+                        className="min-h-11 font-medium underline-offset-4 hover:underline"
+                        onClick={() => goToNote(row.date)}
+                      >
+                        {row.date}
+                      </button>
                       <span className="truncate text-sm text-muted-foreground">
                         {row.strategy_name}
                       </span>
@@ -357,7 +428,12 @@ export default function MetricsChart() {
                   </TableHeader>
                   <TableBody>
                     {rows.map((row) => (
-                      <TableRow key={row.id}>
+                      <TableRow
+                        key={row.id}
+                        className="cursor-pointer"
+                        data-state={row.date === focusDate ? "selected" : undefined}
+                        onClick={() => goToNote(row.date)}
+                      >
                         <TableCell>{row.date}</TableCell>
                         <TableCell>{row.strategy_name}</TableCell>
                         <TableCell className="text-right">{row.total_picks}</TableCell>
@@ -374,6 +450,28 @@ export default function MetricsChart() {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={pendingDate !== null} onOpenChange={(open) => !open && setPendingDate(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>该日暂无复盘，是否新建？</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingDate ? `${pendingDate} 还没有复盘记录。确认后将打开编辑页。` : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (!pendingDate) return
+                navigate(notesPath({ date: pendingDate, from, to, strategy_id: strategyId }))
+              }}
+            >
+              新建复盘
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
