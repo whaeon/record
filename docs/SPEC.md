@@ -23,7 +23,7 @@ Windows 本地、当前单用户、非公网部署。当前为 Docker Compose �
 - 样式：Tailwind CSS（dark mode 使用 class 策略）
 - UI 组件：shadcn/ui（通过 CLI 添加）
 - 图表：优先 @tremor/react；双 Y 轴无法实现时回退 shadcn/ui chart（Recharts）
-- Markdown：react-markdown + remark-gfm；预览区使用 @tailwindcss/typography 的 prose 类
+- Markdown：react-markdown + remark-gfm + remark-breaks；预览区使用 @tailwindcss/typography 的 prose 类
 - 图标：lucide-react
 - 桌面壳（PAUSED）：Wails v2
 

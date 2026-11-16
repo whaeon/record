@@ -10,8 +10,22 @@ function parseISO(iso: string): Date {
   return new Date(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10)))
 }
 
+const WEEKDAYS = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"]
+
 export function todayISO(): string {
   return toISO(new Date())
+}
+
+export function weekdayLabel(iso: string): string {
+  return WEEKDAYS[parseISO(iso).getDay()] ?? ""
+}
+
+export function monthTitle(iso: string): string {
+  return `${iso.slice(0, 4)}年${Number(iso.slice(5, 7))}月`
+}
+
+export function noteDateLabel(iso: string): string {
+  return `${Number(iso.slice(5, 7))}月${Number(iso.slice(8, 10))}日`
 }
 
 export function daysAgoISO(days: number): string {

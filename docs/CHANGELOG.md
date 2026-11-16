@@ -6,6 +6,7 @@
 
 ## 2026-11
 
+- 2026-11-16 ｜ T-30：复盘默认预览 + 新建 ｜ frontend/src/{pages/ReviewNotes.tsx,lib/date.ts}、frontend/package.json、docs/SPEC.md ｜ 验收通过 ｜ 无 ｜ Markdown 栈增加 remark-breaks；无 API 路径/参数变更、无数据结构变更
 - 2026-11-16 ｜ T-29：策略×指标分组小图 ｜ frontend/src/{pages/MetricsChart.tsx,components/date-picker.tsx,App.tsx,index.css,pages/ReviewNotes.tsx} ｜ 验收通过 ｜ 无 ｜ 无 API 路径/参数变更、无数据结构变更
 - 2026-11-16 ｜ T-28：合并为策略回顾 ｜ frontend/src/{App.tsx,lib/nav.ts,pages/MetricsChart.tsx,pages/MetricsEntry.tsx,components/{today-stats,metrics-entry-dialog,strategy-manage-dialog}.tsx}、docs/SPEC.md ｜ 验收通过 ｜ 无 ｜ 无 API 路径/参数变更；模块划分改为策略回顾 + 复盘记录两导航；录入与策略 CRUD 改为页内弹窗；删除每日明细与独立 MetricsEntry 页
 - 2026-11-16 ｜ T-27：删除/弃用代码必须清掉 ｜ docs/WORKFLOW.md ｜ 验收通过 ｜ 无 ｜ 无契约变更；编码规范新增：被替换实现须同一任务内删除
