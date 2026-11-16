@@ -106,7 +106,7 @@ function App() {
         </SheetContent>
       </Sheet>
       <ConnectionBanner />
-      <main className="mx-auto max-w-6xl px-4 py-4 md:px-6 md:py-6">
+      <main className="mx-auto max-w-6xl px-4 py-3 md:px-6 md:py-4">
         <Routes>
           <Route path="/" element={<MetricsChart />} />
           <Route path="/chart" element={<ChartRedirect />} />

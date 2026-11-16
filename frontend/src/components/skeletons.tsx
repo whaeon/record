@@ -11,7 +11,7 @@ export function ListSkeleton({ rows = 4 }: { rows?: number }) {
 }
 
 export function ChartSkeleton() {
-  return <Skeleton className="h-[280px] w-full rounded-xl md:h-[360px]" />
+  return <Skeleton className="h-[160px] w-full rounded-xl md:h-[180px]" />
 }
 
 export function StatsSkeleton() {
