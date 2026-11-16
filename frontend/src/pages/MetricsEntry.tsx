@@ -24,6 +24,7 @@ import { toastApiError } from "@/lib/notify"
 import { DatePicker } from "@/components/date-picker"
 import { EmptyState } from "@/components/empty-state"
 import { ListSkeleton } from "@/components/skeletons"
+import { SourceBadge } from "@/components/source-badge"
 import { TodayStats } from "@/components/today-stats"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -849,9 +850,15 @@ export default function MetricsEntry() {
           <AlertDialogHeader>
             <AlertDialogTitle>该日期已有此交易策略的记录，是否修改？</AlertDialogTitle>
             <AlertDialogDescription>
-              {conflict
-                ? `已有记录：筛出票数 ${conflict.total_picks}，涨停数 ${conflict.limit_up_count}，炸板数 ${conflict.failed_limit_count}。确认后将覆盖为当前表单中的数字。`
-                : ""}
+              {conflict ? (
+                <span className="inline-flex flex-wrap items-center gap-1.5">
+                  已有记录：筛出票数 {conflict.total_picks}，涨停数 {conflict.limit_up_count}，炸板数 {conflict.failed_limit_count}
+                  <SourceBadge source={conflict.source} />
+                  。确认后将覆盖为当前表单中的数字。
+                </span>
+              ) : (
+                ""
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -895,9 +902,10 @@ export default function MetricsEntry() {
                 <p>确认后将用当前填写的数字覆盖以下记录：</p>
                 <ul className="grid gap-1">
                   {batchConflicts.map((item) => (
-                    <li key={item.strategy.id}>
+                    <li key={item.strategy.id} className="inline-flex flex-wrap items-center gap-1.5">
                       {item.strategy.name}：筛出 {item.existing.total_picks}，涨停{" "}
                       {item.existing.limit_up_count}，炸板 {item.existing.failed_limit_count}
+                      <SourceBadge source={item.existing.source} />
                     </li>
                   ))}
                 </ul>

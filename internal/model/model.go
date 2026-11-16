@@ -25,6 +25,7 @@ type StrategyMetric struct {
 	TotalPicks       int     `json:"total_picks"`
 	LimitUpCount     int     `json:"limit_up_count"`
 	FailedLimitCount int     `json:"failed_limit_count"`
+	Source           string  `json:"source"`
 	SealRate         float64 `json:"seal_rate"`
 	BreakRate        float64 `json:"break_rate"`
 }

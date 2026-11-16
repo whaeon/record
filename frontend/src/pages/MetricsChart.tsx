@@ -17,6 +17,7 @@ import { listStrategies, type Strategy } from "@/api/strategies"
 import { DatePicker } from "@/components/date-picker"
 import { EmptyState } from "@/components/empty-state"
 import { ChartSkeleton, ListSkeleton } from "@/components/skeletons"
+import { SourceBadge, SourceHint } from "@/components/source-badge"
 import {
   formatPercent,
   lastNTradingDays,
@@ -551,10 +552,11 @@ export default function MetricsChart() {
                     <div className="flex items-baseline justify-between gap-2">
                       <button
                         type="button"
-                        className="min-h-11 font-medium underline-offset-4 hover:underline"
+                        className="inline-flex min-h-11 items-center gap-1.5 font-medium underline-offset-4 hover:underline"
                         onClick={() => goToNote(row.date)}
                       >
                         {row.date}
+                        <SourceBadge source={row.source} />
                       </button>
                       <span className="truncate text-sm text-muted-foreground">
                         {row.strategy_name}
@@ -606,7 +608,12 @@ export default function MetricsChart() {
                         data-state={row.date === focusDate ? "selected" : undefined}
                         onClick={() => goToNote(row.date)}
                       >
-                        <TableCell>{row.date}</TableCell>
+                        <TableCell>
+                          <span className="inline-flex items-center gap-1.5">
+                            {row.date}
+                            <SourceBadge source={row.source} />
+                          </span>
+                        </TableCell>
                         <TableCell>{row.strategy_name}</TableCell>
                         <TableCell className="text-right">{row.total_picks}</TableCell>
                         <TableCell className="text-right">{row.limit_up_count}</TableCell>
@@ -653,6 +660,7 @@ type TooltipItem = {
   name?: string
   value?: number | string
   color?: string
+  payload?: { source?: string }
 }
 
 type LegendItem = {
@@ -707,9 +715,14 @@ function DualAxisTooltip({
   if (!active || !payload?.length) {
     return null
   }
+  const source = payload[0]?.payload?.source
   return (
     <div className="max-w-[min(100vw-2rem,18rem)] rounded-lg border bg-background px-3 py-2 text-xs shadow-sm">
-      <div className="mb-1 font-medium">{label}</div>
+      <div className="mb-1 flex items-center gap-1.5 font-medium">
+        <span>{label}</span>
+        <SourceBadge source={source} />
+        <SourceHint source={source} />
+      </div>
       {payload.map((item) => {
         const key = String(item.dataKey ?? item.name ?? "")
         const isRate = key.endsWith("_pct")

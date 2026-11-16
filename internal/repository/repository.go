@@ -172,14 +172,14 @@ func NewMetricRepository(db *sql.DB) *MetricRepository {
 	return &MetricRepository{db: db}
 }
 
-const metricSelect = `SELECT m.id, m.date, m.strategy_id, s.name, m.total_picks, m.limit_up_count, m.failed_limit_count
+const metricSelect = `SELECT m.id, m.date, m.strategy_id, s.name, m.total_picks, m.limit_up_count, m.failed_limit_count, m.source
 	FROM strategy_metrics m JOIN strategies s ON s.id = m.strategy_id`
 
 func scanMetric(scanner interface {
 	Scan(dest ...any) error
 }) (model.StrategyMetric, error) {
 	var m model.StrategyMetric
-	err := scanner.Scan(&m.ID, &m.Date, &m.StrategyID, &m.StrategyName, &m.TotalPicks, &m.LimitUpCount, &m.FailedLimitCount)
+	err := scanner.Scan(&m.ID, &m.Date, &m.StrategyID, &m.StrategyName, &m.TotalPicks, &m.LimitUpCount, &m.FailedLimitCount, &m.Source)
 	return m, err
 }
 
@@ -280,7 +280,8 @@ func (r *MetricRepository) ListAggregatedByDate(ctx context.Context, from, to st
 	query := `SELECT m.date,
 		SUM(m.total_picks),
 		SUM(m.limit_up_count),
-		SUM(m.failed_limit_count)
+		SUM(m.failed_limit_count),
+		CASE WHEN BOOL_OR(m.source = 'auto') THEN 'auto' ELSE 'manual' END
 		FROM strategy_metrics m WHERE TRUE`
 	args := make([]any, 0, 2)
 	if from != "" {
@@ -302,7 +303,7 @@ func (r *MetricRepository) ListAggregatedByDate(ctx context.Context, from, to st
 	list := make([]model.StrategyMetric, 0)
 	for rows.Next() {
 		var m model.StrategyMetric
-		if err := rows.Scan(&m.Date, &m.TotalPicks, &m.LimitUpCount, &m.FailedLimitCount); err != nil {
+		if err := rows.Scan(&m.Date, &m.TotalPicks, &m.LimitUpCount, &m.FailedLimitCount, &m.Source); err != nil {
 			return nil, err
 		}
 		m.StrategyName = "全部策略"

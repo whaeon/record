@@ -23,9 +23,11 @@ CREATE TABLE IF NOT EXISTS __SCHEMA__.strategy_metrics (
 	total_picks INTEGER NOT NULL DEFAULT 0,
 	limit_up_count INTEGER NOT NULL DEFAULT 0,
 	failed_limit_count INTEGER NOT NULL DEFAULT 0,
+	source TEXT NOT NULL DEFAULT 'manual',
 	UNIQUE(date, strategy_id),
 	FOREIGN KEY (strategy_id) REFERENCES __SCHEMA__.strategies(id) ON DELETE CASCADE
 );
+ALTER TABLE __SCHEMA__.strategy_metrics ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'manual';
 CREATE INDEX IF NOT EXISTS idx_metrics_date_strategy ON __SCHEMA__.strategy_metrics(date, strategy_id);
 CREATE TABLE IF NOT EXISTS __SCHEMA__.review_notes (
 	id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

@@ -8,6 +8,7 @@ export type StrategyMetric = {
   total_picks: number
   limit_up_count: number
   failed_limit_count: number
+  source?: string
   seal_rate: number
   break_rate: number
 }
