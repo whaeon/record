@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"strconv"
 	"strings"
@@ -42,12 +43,12 @@ func New(
 	return &Service{strategies: strategies, metrics: metrics, notes: notes}
 }
 
-func (s *Service) ListStrategies() ([]model.Strategy, error) {
-	return s.strategies.List()
+func (s *Service) ListStrategies(ctx context.Context) ([]model.Strategy, error) {
+	return s.strategies.List(ctx)
 }
 
-func (s *Service) GetStrategy(id int64) (*model.Strategy, error) {
-	st, err := s.strategies.GetByID(id)
+func (s *Service) GetStrategy(ctx context.Context, id int64) (*model.Strategy, error) {
+	st, err := s.strategies.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +58,7 @@ func (s *Service) GetStrategy(id int64) (*model.Strategy, error) {
 	return st, nil
 }
 
-func (s *Service) CreateStrategy(name, detail string) (*model.Strategy, error) {
+func (s *Service) CreateStrategy(ctx context.Context, name, detail string) (*model.Strategy, error) {
 	name = strings.TrimSpace(name)
 	detail = strings.TrimSpace(detail)
 	if name == "" {
@@ -66,7 +67,7 @@ func (s *Service) CreateStrategy(name, detail string) (*model.Strategy, error) {
 	if detail == "" {
 		return nil, ErrDetailRequired
 	}
-	existing, err := s.strategies.GetByName(name)
+	existing, err := s.strategies.GetByName(ctx, name)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +86,7 @@ func (s *Service) CreateStrategy(name, detail string) (*model.Strategy, error) {
 		Note:      "",
 		ChangedAt: now,
 	}
-	if err := s.strategies.Create(st, rev); err != nil {
+	if err := s.strategies.Create(ctx, st, rev); err != nil {
 		if isUniqueConstraint(err) {
 			return nil, ErrNameConflict
 		}
@@ -94,7 +95,7 @@ func (s *Service) CreateStrategy(name, detail string) (*model.Strategy, error) {
 	return st, nil
 }
 
-func (s *Service) UpdateStrategy(id int64, name, detail, note string) (*model.Strategy, error) {
+func (s *Service) UpdateStrategy(ctx context.Context, id int64, name, detail, note string) (*model.Strategy, error) {
 	name = strings.TrimSpace(name)
 	detail = strings.TrimSpace(detail)
 	if name == "" {
@@ -103,7 +104,7 @@ func (s *Service) UpdateStrategy(id int64, name, detail, note string) (*model.St
 	if detail == "" {
 		return nil, ErrDetailRequired
 	}
-	st, err := s.strategies.GetByID(id)
+	st, err := s.strategies.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +112,7 @@ func (s *Service) UpdateStrategy(id int64, name, detail, note string) (*model.St
 		return nil, ErrNotFound
 	}
 	if name != st.Name {
-		dup, err := s.strategies.GetByName(name)
+		dup, err := s.strategies.GetByName(ctx, name)
 		if err != nil {
 			return nil, err
 		}
@@ -134,7 +135,7 @@ func (s *Service) UpdateStrategy(id int64, name, detail, note string) (*model.St
 			ChangedAt:  now,
 		}
 	}
-	if err := s.strategies.Update(st, rev); err != nil {
+	if err := s.strategies.Update(ctx, st, rev); err != nil {
 		if isUniqueConstraint(err) {
 			return nil, ErrNameConflict
 		}
@@ -143,8 +144,8 @@ func (s *Service) UpdateStrategy(id int64, name, detail, note string) (*model.St
 	return st, nil
 }
 
-func (s *Service) DeleteStrategy(id int64, confirm bool) error {
-	st, err := s.strategies.GetByID(id)
+func (s *Service) DeleteStrategy(ctx context.Context, id int64, confirm bool) error {
+	st, err := s.strategies.GetByID(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -152,11 +153,11 @@ func (s *Service) DeleteStrategy(id int64, confirm bool) error {
 		return ErrNotFound
 	}
 	if !confirm {
-		metricsCount, err := s.strategies.CountMetrics(id)
+		metricsCount, err := s.strategies.CountMetrics(ctx, id)
 		if err != nil {
 			return err
 		}
-		revCount, err := s.strategies.CountRevisions(id)
+		revCount, err := s.strategies.CountRevisions(ctx, id)
 		if err != nil {
 			return err
 		}
@@ -164,21 +165,21 @@ func (s *Service) DeleteStrategy(id int64, confirm bool) error {
 			return ErrDeleteConfirmRequired
 		}
 	}
-	return s.strategies.Delete(id)
+	return s.strategies.Delete(ctx, id)
 }
 
-func (s *Service) ListRevisions(strategyID int64) ([]model.StrategyRevision, error) {
-	st, err := s.strategies.GetByID(strategyID)
+func (s *Service) ListRevisions(ctx context.Context, strategyID int64) ([]model.StrategyRevision, error) {
+	st, err := s.strategies.GetByID(ctx, strategyID)
 	if err != nil {
 		return nil, err
 	}
 	if st == nil {
 		return nil, ErrNotFound
 	}
-	return s.strategies.ListRevisions(strategyID)
+	return s.strategies.ListRevisions(ctx, strategyID)
 }
 
-func (s *Service) CreateMetric(m *model.StrategyMetric) (*model.StrategyMetric, error) {
+func (s *Service) CreateMetric(ctx context.Context, m *model.StrategyMetric) (*model.StrategyMetric, error) {
 	if err := validateDate(m.Date); err != nil {
 		return nil, err
 	}
@@ -188,14 +189,14 @@ func (s *Service) CreateMetric(m *model.StrategyMetric) (*model.StrategyMetric, 
 	if m.TotalPicks < 0 || m.LimitUpCount < 0 || m.FailedLimitCount < 0 {
 		return nil, ErrInvalidMetric
 	}
-	st, err := s.strategies.GetByID(m.StrategyID)
+	st, err := s.strategies.GetByID(ctx, m.StrategyID)
 	if err != nil {
 		return nil, err
 	}
 	if st == nil {
 		return nil, ErrNotFound
 	}
-	existing, err := s.metrics.GetByDateAndStrategy(m.Date, m.StrategyID)
+	existing, err := s.metrics.GetByDateAndStrategy(ctx, m.Date, m.StrategyID)
 	if err != nil {
 		return nil, err
 	}
@@ -203,9 +204,9 @@ func (s *Service) CreateMetric(m *model.StrategyMetric) (*model.StrategyMetric, 
 		applyRates(existing)
 		return nil, &MetricConflictError{Existing: existing}
 	}
-	if err := s.metrics.Create(m); err != nil {
+	if err := s.metrics.Create(ctx, m); err != nil {
 		if isUniqueConstraint(err) {
-			dup, getErr := s.metrics.GetByDateAndStrategy(m.Date, m.StrategyID)
+			dup, getErr := s.metrics.GetByDateAndStrategy(ctx, m.Date, m.StrategyID)
 			if getErr == nil && dup != nil {
 				applyRates(dup)
 				return nil, &MetricConflictError{Existing: dup}
@@ -217,7 +218,7 @@ func (s *Service) CreateMetric(m *model.StrategyMetric) (*model.StrategyMetric, 
 	return m, nil
 }
 
-func (s *Service) UpdateMetric(id int64, m *model.StrategyMetric) (*model.StrategyMetric, error) {
+func (s *Service) UpdateMetric(ctx context.Context, id int64, m *model.StrategyMetric) (*model.StrategyMetric, error) {
 	if err := validateDate(m.Date); err != nil {
 		return nil, err
 	}
@@ -227,21 +228,21 @@ func (s *Service) UpdateMetric(id int64, m *model.StrategyMetric) (*model.Strate
 	if m.TotalPicks < 0 || m.LimitUpCount < 0 || m.FailedLimitCount < 0 {
 		return nil, ErrInvalidMetric
 	}
-	current, err := s.metrics.GetByID(id)
+	current, err := s.metrics.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 	if current == nil {
 		return nil, ErrNotFound
 	}
-	st, err := s.strategies.GetByID(m.StrategyID)
+	st, err := s.strategies.GetByID(ctx, m.StrategyID)
 	if err != nil {
 		return nil, err
 	}
 	if st == nil {
 		return nil, ErrNotFound
 	}
-	dup, err := s.metrics.GetByDateAndStrategy(m.Date, m.StrategyID)
+	dup, err := s.metrics.GetByDateAndStrategy(ctx, m.Date, m.StrategyID)
 	if err != nil {
 		return nil, err
 	}
@@ -250,14 +251,14 @@ func (s *Service) UpdateMetric(id int64, m *model.StrategyMetric) (*model.Strate
 		return nil, &MetricConflictError{Existing: dup}
 	}
 	m.ID = id
-	if err := s.metrics.Update(m); err != nil {
+	if err := s.metrics.Update(ctx, m); err != nil {
 		return nil, err
 	}
 	applyRates(m)
 	return m, nil
 }
 
-func (s *Service) ListMetrics(from, to, strategyIDRaw string) ([]model.StrategyMetric, error) {
+func (s *Service) ListMetrics(ctx context.Context, from, to, strategyIDRaw string) ([]model.StrategyMetric, error) {
 	if from != "" {
 		if err := validateDate(from); err != nil {
 			return nil, err
@@ -276,7 +277,7 @@ func (s *Service) ListMetrics(from, to, strategyIDRaw string) ([]model.StrategyM
 		}
 		strategyID = id
 	}
-	list, err := s.metrics.List(from, to, strategyID)
+	list, err := s.metrics.List(ctx, from, to, strategyID)
 	if err != nil {
 		return nil, err
 	}
@@ -286,12 +287,12 @@ func (s *Service) ListMetrics(from, to, strategyIDRaw string) ([]model.StrategyM
 	return list, nil
 }
 
-func (s *Service) ListMetricDates() ([]string, error) {
-	return s.metrics.ListDates()
+func (s *Service) ListMetricDates(ctx context.Context) ([]string, error) {
+	return s.metrics.ListDates(ctx)
 }
 
-func (s *Service) ListNotes() ([]model.ReviewNote, error) {
-	list, err := s.notes.List()
+func (s *Service) ListNotes(ctx context.Context) ([]model.ReviewNote, error) {
+	list, err := s.notes.List(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -301,11 +302,11 @@ func (s *Service) ListNotes() ([]model.ReviewNote, error) {
 	return list, nil
 }
 
-func (s *Service) GetNote(date string) (*model.ReviewNote, error) {
+func (s *Service) GetNote(ctx context.Context, date string) (*model.ReviewNote, error) {
 	if err := validateDate(date); err != nil {
 		return nil, err
 	}
-	n, err := s.notes.GetByDate(date)
+	n, err := s.notes.GetByDate(ctx, date)
 	if err != nil {
 		return nil, err
 	}
@@ -315,11 +316,11 @@ func (s *Service) GetNote(date string) (*model.ReviewNote, error) {
 	return n, nil
 }
 
-func (s *Service) UpsertNote(date, content string) (*model.ReviewNote, error) {
+func (s *Service) UpsertNote(ctx context.Context, date, content string) (*model.ReviewNote, error) {
 	if err := validateDate(date); err != nil {
 		return nil, err
 	}
-	return s.notes.Upsert(date, content, nowISO())
+	return s.notes.Upsert(ctx, date, content, nowISO())
 }
 
 func applyRates(m *model.StrategyMetric) {

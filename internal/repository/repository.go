@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
@@ -15,14 +16,14 @@ func NewStrategyRepository(db *sql.DB) *StrategyRepository {
 	return &StrategyRepository{db: db}
 }
 
-func (r *StrategyRepository) Create(s *model.Strategy, revision *model.StrategyRevision) error {
-	tx, err := r.db.Begin()
+func (r *StrategyRepository) Create(ctx context.Context, s *model.Strategy, revision *model.StrategyRevision) error {
+	tx, err := beginTx(ctx, r.db)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 
-	err = tx.QueryRow(
+	err = tx.QueryRowContext(ctx,
 		`INSERT INTO strategies (name, current_detail, created_at, updated_at)
 		 VALUES ($1, $2, $3, $4)
 		 RETURNING id`,
@@ -33,7 +34,7 @@ func (r *StrategyRepository) Create(s *model.Strategy, revision *model.StrategyR
 	}
 	revision.StrategyID = s.ID
 
-	err = tx.QueryRow(
+	err = tx.QueryRowContext(ctx,
 		`INSERT INTO strategy_revisions (strategy_id, detail, note, changed_at)
 		 VALUES ($1, $2, $3, $4)
 		 RETURNING id`,
@@ -45,9 +46,9 @@ func (r *StrategyRepository) Create(s *model.Strategy, revision *model.StrategyR
 	return tx.Commit()
 }
 
-func (r *StrategyRepository) GetByID(id int64) (*model.Strategy, error) {
+func (r *StrategyRepository) GetByID(ctx context.Context, id int64) (*model.Strategy, error) {
 	var s model.Strategy
-	err := r.db.QueryRow(
+	err := q(ctx, r.db).QueryRowContext(ctx,
 		`SELECT id, name, current_detail, created_at, updated_at FROM strategies WHERE id = $1`,
 		id,
 	).Scan(&s.ID, &s.Name, &s.CurrentDetail, &s.CreatedAt, &s.UpdatedAt)
@@ -60,9 +61,9 @@ func (r *StrategyRepository) GetByID(id int64) (*model.Strategy, error) {
 	return &s, nil
 }
 
-func (r *StrategyRepository) GetByName(name string) (*model.Strategy, error) {
+func (r *StrategyRepository) GetByName(ctx context.Context, name string) (*model.Strategy, error) {
 	var s model.Strategy
-	err := r.db.QueryRow(
+	err := q(ctx, r.db).QueryRowContext(ctx,
 		`SELECT id, name, current_detail, created_at, updated_at FROM strategies WHERE name = $1`,
 		name,
 	).Scan(&s.ID, &s.Name, &s.CurrentDetail, &s.CreatedAt, &s.UpdatedAt)
@@ -75,8 +76,8 @@ func (r *StrategyRepository) GetByName(name string) (*model.Strategy, error) {
 	return &s, nil
 }
 
-func (r *StrategyRepository) List() ([]model.Strategy, error) {
-	rows, err := r.db.Query(
+func (r *StrategyRepository) List(ctx context.Context) ([]model.Strategy, error) {
+	rows, err := q(ctx, r.db).QueryContext(ctx,
 		`SELECT id, name, current_detail, created_at, updated_at FROM strategies ORDER BY id ASC`,
 	)
 	if err != nil {
@@ -95,14 +96,14 @@ func (r *StrategyRepository) List() ([]model.Strategy, error) {
 	return list, rows.Err()
 }
 
-func (r *StrategyRepository) Update(s *model.Strategy, revision *model.StrategyRevision) error {
-	tx, err := r.db.Begin()
+func (r *StrategyRepository) Update(ctx context.Context, s *model.Strategy, revision *model.StrategyRevision) error {
+	tx, err := beginTx(ctx, r.db)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 
-	_, err = tx.Exec(
+	_, err = tx.ExecContext(ctx,
 		`UPDATE strategies SET name = $1, current_detail = $2, updated_at = $3 WHERE id = $4`,
 		s.Name, s.CurrentDetail, s.UpdatedAt, s.ID,
 	)
@@ -110,7 +111,7 @@ func (r *StrategyRepository) Update(s *model.Strategy, revision *model.StrategyR
 		return err
 	}
 	if revision != nil {
-		err = tx.QueryRow(
+		err = tx.QueryRowContext(ctx,
 			`INSERT INTO strategy_revisions (strategy_id, detail, note, changed_at)
 			 VALUES ($1, $2, $3, $4)
 			 RETURNING id`,
@@ -123,25 +124,25 @@ func (r *StrategyRepository) Update(s *model.Strategy, revision *model.StrategyR
 	return tx.Commit()
 }
 
-func (r *StrategyRepository) Delete(id int64) error {
-	_, err := r.db.Exec(`DELETE FROM strategies WHERE id = $1`, id)
+func (r *StrategyRepository) Delete(ctx context.Context, id int64) error {
+	_, err := q(ctx, r.db).ExecContext(ctx, `DELETE FROM strategies WHERE id = $1`, id)
 	return err
 }
 
-func (r *StrategyRepository) CountMetrics(strategyID int64) (int, error) {
+func (r *StrategyRepository) CountMetrics(ctx context.Context, strategyID int64) (int, error) {
 	var n int
-	err := r.db.QueryRow(`SELECT COUNT(*) FROM strategy_metrics WHERE strategy_id = $1`, strategyID).Scan(&n)
+	err := q(ctx, r.db).QueryRowContext(ctx, `SELECT COUNT(*) FROM strategy_metrics WHERE strategy_id = $1`, strategyID).Scan(&n)
 	return n, err
 }
 
-func (r *StrategyRepository) CountRevisions(strategyID int64) (int, error) {
+func (r *StrategyRepository) CountRevisions(ctx context.Context, strategyID int64) (int, error) {
 	var n int
-	err := r.db.QueryRow(`SELECT COUNT(*) FROM strategy_revisions WHERE strategy_id = $1`, strategyID).Scan(&n)
+	err := q(ctx, r.db).QueryRowContext(ctx, `SELECT COUNT(*) FROM strategy_revisions WHERE strategy_id = $1`, strategyID).Scan(&n)
 	return n, err
 }
 
-func (r *StrategyRepository) ListRevisions(strategyID int64) ([]model.StrategyRevision, error) {
-	rows, err := r.db.Query(
+func (r *StrategyRepository) ListRevisions(ctx context.Context, strategyID int64) ([]model.StrategyRevision, error) {
+	rows, err := q(ctx, r.db).QueryContext(ctx,
 		`SELECT id, strategy_id, detail, note, changed_at
 		 FROM strategy_revisions WHERE strategy_id = $1
 		 ORDER BY changed_at DESC, id DESC`,
@@ -182,8 +183,8 @@ func scanMetric(scanner interface {
 	return m, err
 }
 
-func (r *MetricRepository) Create(m *model.StrategyMetric) error {
-	err := r.db.QueryRow(
+func (r *MetricRepository) Create(ctx context.Context, m *model.StrategyMetric) error {
+	err := q(ctx, r.db).QueryRowContext(ctx,
 		`INSERT INTO strategy_metrics (date, strategy_id, total_picks, limit_up_count, failed_limit_count)
 		 VALUES ($1, $2, $3, $4, $5)
 		 RETURNING id`,
@@ -192,11 +193,11 @@ func (r *MetricRepository) Create(m *model.StrategyMetric) error {
 	if err != nil {
 		return err
 	}
-	return r.fillName(m)
+	return r.fillName(ctx, m)
 }
 
-func (r *MetricRepository) fillName(m *model.StrategyMetric) error {
-	full, err := r.GetByID(m.ID)
+func (r *MetricRepository) fillName(ctx context.Context, m *model.StrategyMetric) error {
+	full, err := r.GetByID(ctx, m.ID)
 	if err != nil || full == nil {
 		return err
 	}
@@ -204,8 +205,8 @@ func (r *MetricRepository) fillName(m *model.StrategyMetric) error {
 	return nil
 }
 
-func (r *MetricRepository) GetByID(id int64) (*model.StrategyMetric, error) {
-	row := r.db.QueryRow(metricSelect+` WHERE m.id = $1`, id)
+func (r *MetricRepository) GetByID(ctx context.Context, id int64) (*model.StrategyMetric, error) {
+	row := q(ctx, r.db).QueryRowContext(ctx, metricSelect+` WHERE m.id = $1`, id)
 	m, err := scanMetric(row)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -216,8 +217,8 @@ func (r *MetricRepository) GetByID(id int64) (*model.StrategyMetric, error) {
 	return &m, nil
 }
 
-func (r *MetricRepository) GetByDateAndStrategy(date string, strategyID int64) (*model.StrategyMetric, error) {
-	row := r.db.QueryRow(metricSelect+` WHERE m.date = $1 AND m.strategy_id = $2`, date, strategyID)
+func (r *MetricRepository) GetByDateAndStrategy(ctx context.Context, date string, strategyID int64) (*model.StrategyMetric, error) {
+	row := q(ctx, r.db).QueryRowContext(ctx, metricSelect+` WHERE m.date = $1 AND m.strategy_id = $2`, date, strategyID)
 	m, err := scanMetric(row)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -228,8 +229,8 @@ func (r *MetricRepository) GetByDateAndStrategy(date string, strategyID int64) (
 	return &m, nil
 }
 
-func (r *MetricRepository) Update(m *model.StrategyMetric) error {
-	_, err := r.db.Exec(
+func (r *MetricRepository) Update(ctx context.Context, m *model.StrategyMetric) error {
+	_, err := q(ctx, r.db).ExecContext(ctx,
 		`UPDATE strategy_metrics
 		 SET date = $1, strategy_id = $2, total_picks = $3, limit_up_count = $4, failed_limit_count = $5
 		 WHERE id = $6`,
@@ -238,10 +239,10 @@ func (r *MetricRepository) Update(m *model.StrategyMetric) error {
 	if err != nil {
 		return err
 	}
-	return r.fillName(m)
+	return r.fillName(ctx, m)
 }
 
-func (r *MetricRepository) List(from, to string, strategyID int64) ([]model.StrategyMetric, error) {
+func (r *MetricRepository) List(ctx context.Context, from, to string, strategyID int64) ([]model.StrategyMetric, error) {
 	query := metricSelect + ` WHERE TRUE`
 	args := make([]any, 0, 3)
 	if from != "" {
@@ -258,7 +259,7 @@ func (r *MetricRepository) List(from, to string, strategyID int64) ([]model.Stra
 	}
 	query += ` ORDER BY m.date ASC, s.name ASC`
 
-	rows, err := r.db.Query(query, args...)
+	rows, err := q(ctx, r.db).QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -275,8 +276,8 @@ func (r *MetricRepository) List(from, to string, strategyID int64) ([]model.Stra
 	return list, rows.Err()
 }
 
-func (r *MetricRepository) ListDates() ([]string, error) {
-	rows, err := r.db.Query(`SELECT DISTINCT date FROM strategy_metrics ORDER BY date ASC`)
+func (r *MetricRepository) ListDates(ctx context.Context) ([]string, error) {
+	rows, err := q(ctx, r.db).QueryContext(ctx, `SELECT DISTINCT date FROM strategy_metrics ORDER BY date ASC`)
 	if err != nil {
 		return nil, err
 	}
@@ -301,8 +302,8 @@ func NewNoteRepository(db *sql.DB) *NoteRepository {
 	return &NoteRepository{db: db}
 }
 
-func (r *NoteRepository) List() ([]model.ReviewNote, error) {
-	rows, err := r.db.Query(
+func (r *NoteRepository) List(ctx context.Context) ([]model.ReviewNote, error) {
+	rows, err := q(ctx, r.db).QueryContext(ctx,
 		`SELECT id, date, content, updated_at FROM review_notes ORDER BY date DESC`,
 	)
 	if err != nil {
@@ -321,9 +322,9 @@ func (r *NoteRepository) List() ([]model.ReviewNote, error) {
 	return list, rows.Err()
 }
 
-func (r *NoteRepository) GetByDate(date string) (*model.ReviewNote, error) {
+func (r *NoteRepository) GetByDate(ctx context.Context, date string) (*model.ReviewNote, error) {
 	var n model.ReviewNote
-	err := r.db.QueryRow(
+	err := q(ctx, r.db).QueryRowContext(ctx,
 		`SELECT id, date, content, updated_at FROM review_notes WHERE date = $1`,
 		date,
 	).Scan(&n.ID, &n.Date, &n.Content, &n.UpdatedAt)
@@ -336,8 +337,8 @@ func (r *NoteRepository) GetByDate(date string) (*model.ReviewNote, error) {
 	return &n, nil
 }
 
-func (r *NoteRepository) Upsert(date, content, updatedAt string) (*model.ReviewNote, error) {
-	_, err := r.db.Exec(
+func (r *NoteRepository) Upsert(ctx context.Context, date, content, updatedAt string) (*model.ReviewNote, error) {
+	_, err := q(ctx, r.db).ExecContext(ctx,
 		`INSERT INTO review_notes (date, content, updated_at)
 		 VALUES ($1, $2, $3)
 		 ON CONFLICT (date) DO UPDATE SET content = EXCLUDED.content, updated_at = EXCLUDED.updated_at`,
@@ -346,5 +347,5 @@ func (r *NoteRepository) Upsert(date, content, updatedAt string) (*model.ReviewN
 	if err != nil {
 		return nil, err
 	}
-	return r.GetByDate(date)
+	return r.GetByDate(ctx, date)
 }

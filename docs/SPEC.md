@@ -6,7 +6,7 @@
 > 接口标注：［已实现］当前生效 ｜［待实现］已定义、尚未落地
 
 ## 运行形态
-Windows 本地、单用户、非公网部署。当前为 Docker Compose 三容器 Web 形态（db / api / web），浏览器访问 web。未来可选 Wails 打包为桌面应用（PAUSED）。
+Windows 本地、当前单用户、非公网部署。当前为 Docker Compose 三容器 Web 形态（db / api / web），浏览器访问 web。数据按用户 schema 物理隔离；本地通过 `DEFAULT_USER_ID` 注入默认用户，前端无需登录。未来可选 Wails 打包为桌面应用（PAUSED）。
 
 ## 技术栈登记
 
@@ -16,6 +16,7 @@ Windows 本地、单用户、非公网部署。当前为 Docker Compose 三容�
 - 后端：Go 1.25 + Gin
 - 数据库：PostgreSQL 16；驱动 `github.com/jackc/pgx/v5/stdlib`（database/sql，禁止 ORM）
 - 连接：环境变量 `DATABASE_URL`；缺省 `postgres://record:record@127.0.0.1:5432/record?sslmode=disable`
+- 默认用户：环境变量 `DEFAULT_USER_ID`；缺省 `1`。auth 中间件当前直接返回该用户，前端免登录
 - 编排：Docker Compose（db healthcheck `pg_isready`；api `depends_on: condition: service_healthy`；api 连库 5 次退避重试后退出，不得 panic）
 - 前端：React 19 + TypeScript + Vite
 - 样式：Tailwind CSS（dark mode 使用 class 策略）
@@ -57,7 +58,22 @@ src/pages, src/components, src/api
 - 时间与日期字段仍为 TEXT，语义不变（ISO8601 / YYYY-MM-DD）
 - 外键、UNIQUE、索引定义与字段语义见各表
 
+## 多用户架构［已确认］
+- 每个用户对应一个独立 PostgreSQL schema，命名规则 `user_<id>`（例如 `user_1`）。
+- `public.users` 存用户元数据；业务四表（strategies / strategy_revisions / strategy_metrics / review_notes）建在该用户 schema 内。
+- 建表脚本参数化：传入 schema 名执行，repository 不硬编码 schema 名。
+- 请求级 `search_path` 指向当前用户 schema；数据访问走当前请求绑定的连接。
+- auth 为可插拔中间件：当前实现读取 `DEFAULT_USER_ID` 并直接视为已登录。未来替换为真实认证时只换中间件，handler / service 业务逻辑不动。
+- 启动时若默认用户不存在，自动插入 `public.users`、创建 `user_<id>` schema 并建表。
+- 切换 `DEFAULT_USER_ID` 并重启 api 即切换当前用户数据空间，各 schema 互不可见。
+
 ## 数据模型
+
+### users（用户，public schema）［已确认］
+- id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY
+- name TEXT NOT NULL
+- created_at TEXT NOT NULL（ISO8601）
+- 规则：业务数据不落在本表；本表仅作用户身份与 schema 对应
 
 ### strategies（交易策略，可改名）［已确认］
 - id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY

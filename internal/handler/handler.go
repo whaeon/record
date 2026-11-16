@@ -18,8 +18,11 @@ func New(svc *service.Service) *Handler {
 	return &Handler{svc: svc}
 }
 
-func (h *Handler) Register(r *gin.Engine) {
+func (h *Handler) Register(r *gin.Engine, mws ...gin.HandlerFunc) {
 	api := r.Group("/api")
+	if len(mws) > 0 {
+		api.Use(mws...)
+	}
 	api.GET("/strategies", h.ListStrategies)
 	api.POST("/strategies", h.CreateStrategy)
 	api.GET("/strategies/:id/revisions", h.ListRevisions)
@@ -56,7 +59,7 @@ type upsertNoteRequest struct {
 }
 
 func (h *Handler) ListStrategies(c *gin.Context) {
-	list, err := h.svc.ListStrategies()
+	list, err := h.svc.ListStrategies(c.Request.Context())
 	if err != nil {
 		writeError(c, err)
 		return
@@ -70,7 +73,7 @@ func (h *Handler) CreateStrategy(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	st, err := h.svc.CreateStrategy(req.Name, req.CurrentDetail)
+	st, err := h.svc.CreateStrategy(c.Request.Context(), req.Name, req.CurrentDetail)
 	if err != nil {
 		writeError(c, err)
 		return
@@ -83,7 +86,7 @@ func (h *Handler) GetStrategy(c *gin.Context) {
 	if !ok {
 		return
 	}
-	st, err := h.svc.GetStrategy(id)
+	st, err := h.svc.GetStrategy(c.Request.Context(), id)
 	if err != nil {
 		writeError(c, err)
 		return
@@ -101,7 +104,7 @@ func (h *Handler) UpdateStrategy(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	st, err := h.svc.UpdateStrategy(id, req.Name, req.CurrentDetail, req.Note)
+	st, err := h.svc.UpdateStrategy(c.Request.Context(), id, req.Name, req.CurrentDetail, req.Note)
 	if err != nil {
 		writeError(c, err)
 		return
@@ -115,7 +118,7 @@ func (h *Handler) DeleteStrategy(c *gin.Context) {
 		return
 	}
 	confirm := c.Query("confirm") == "true"
-	if err := h.svc.DeleteStrategy(id, confirm); err != nil {
+	if err := h.svc.DeleteStrategy(c.Request.Context(), id, confirm); err != nil {
 		writeError(c, err)
 		return
 	}
@@ -127,7 +130,7 @@ func (h *Handler) ListRevisions(c *gin.Context) {
 	if !ok {
 		return
 	}
-	list, err := h.svc.ListRevisions(id)
+	list, err := h.svc.ListRevisions(c.Request.Context(), id)
 	if err != nil {
 		writeError(c, err)
 		return
@@ -141,7 +144,7 @@ func (h *Handler) CreateMetric(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	m, err := h.svc.CreateMetric(&model.StrategyMetric{
+	m, err := h.svc.CreateMetric(c.Request.Context(), &model.StrategyMetric{
 		Date:             req.Date,
 		StrategyID:       req.StrategyID,
 		TotalPicks:       req.TotalPicks,
@@ -165,7 +168,7 @@ func (h *Handler) UpdateMetric(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	m, err := h.svc.UpdateMetric(id, &model.StrategyMetric{
+	m, err := h.svc.UpdateMetric(c.Request.Context(), id, &model.StrategyMetric{
 		Date:             req.Date,
 		StrategyID:       req.StrategyID,
 		TotalPicks:       req.TotalPicks,
@@ -180,7 +183,7 @@ func (h *Handler) UpdateMetric(c *gin.Context) {
 }
 
 func (h *Handler) ListMetrics(c *gin.Context) {
-	list, err := h.svc.ListMetrics(c.Query("from"), c.Query("to"), c.Query("strategy_id"))
+	list, err := h.svc.ListMetrics(c.Request.Context(), c.Query("from"), c.Query("to"), c.Query("strategy_id"))
 	if err != nil {
 		writeError(c, err)
 		return
@@ -189,7 +192,7 @@ func (h *Handler) ListMetrics(c *gin.Context) {
 }
 
 func (h *Handler) ListMetricDates(c *gin.Context) {
-	dates, err := h.svc.ListMetricDates()
+	dates, err := h.svc.ListMetricDates(c.Request.Context())
 	if err != nil {
 		writeError(c, err)
 		return
@@ -198,7 +201,7 @@ func (h *Handler) ListMetricDates(c *gin.Context) {
 }
 
 func (h *Handler) ListNotes(c *gin.Context) {
-	list, err := h.svc.ListNotes()
+	list, err := h.svc.ListNotes(c.Request.Context())
 	if err != nil {
 		writeError(c, err)
 		return
@@ -207,7 +210,7 @@ func (h *Handler) ListNotes(c *gin.Context) {
 }
 
 func (h *Handler) GetNote(c *gin.Context) {
-	n, err := h.svc.GetNote(c.Param("date"))
+	n, err := h.svc.GetNote(c.Request.Context(), c.Param("date"))
 	if err != nil {
 		writeError(c, err)
 		return
@@ -221,7 +224,7 @@ func (h *Handler) UpsertNote(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	n, err := h.svc.UpsertNote(c.Param("date"), req.Content)
+	n, err := h.svc.UpsertNote(c.Request.Context(), c.Param("date"), req.Content)
 	if err != nil {
 		writeError(c, err)
 		return
