@@ -38,6 +38,9 @@ func (h *Handler) Register(r *gin.Engine, mws ...gin.HandlerFunc) {
 	api.GET("/notes", h.ListNotes)
 	api.GET("/notes/:date", h.GetNote)
 	api.PUT("/notes/:date", h.UpsertNote)
+
+	api.GET("/export/metrics.csv", h.ExportMetricsCSV)
+	api.GET("/export/notes.md", h.ExportNotesZip)
 }
 
 type strategyRequest struct {
@@ -216,6 +219,26 @@ func (h *Handler) GetNote(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, n)
+}
+
+func (h *Handler) ExportMetricsCSV(c *gin.Context) {
+	data, err := h.svc.ExportMetricsCSV(c.Request.Context())
+	if err != nil {
+		writeError(c, err)
+		return
+	}
+	c.Header("Content-Disposition", `attachment; filename="metrics.csv"`)
+	c.Data(http.StatusOK, "text/csv; charset=utf-8", data)
+}
+
+func (h *Handler) ExportNotesZip(c *gin.Context) {
+	data, err := h.svc.ExportNotesZip(c.Request.Context())
+	if err != nil {
+		writeError(c, err)
+		return
+	}
+	c.Header("Content-Disposition", `attachment; filename="notes.zip"`)
+	c.Data(http.StatusOK, "application/zip", data)
 }
 
 func (h *Handler) UpsertNote(c *gin.Context) {

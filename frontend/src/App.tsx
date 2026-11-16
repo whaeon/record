@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { NavLink, Route, Routes } from "react-router-dom"
 import { ClipboardList, LineChart, Menu, NotebookPen } from "lucide-react"
+import { ExportMenu } from "@/components/export-menu"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Toaster } from "@/components/ui/sonner"
 import { Button } from "@/components/ui/button"
@@ -46,7 +47,8 @@ function App() {
               </NavLink>
             ))}
           </nav>
-          <div className="hidden justify-self-end md:block">
+          <div className="hidden items-center justify-self-end gap-1 md:flex">
+            <ExportMenu />
             <ThemeToggle />
           </div>
           <Button
@@ -87,9 +89,15 @@ function App() {
               </NavLink>
             ))}
           </nav>
-          <div className="mt-4 flex items-center justify-between gap-3 border-t px-4 py-3">
-            <span className="text-sm text-muted-foreground">主题</span>
-            <ThemeToggle />
+          <div className="mt-4 grid gap-3 border-t px-4 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm text-muted-foreground">导出数据</span>
+              <ExportMenu />
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm text-muted-foreground">主题</span>
+              <ThemeToggle />
+            </div>
           </div>
         </SheetContent>
       </Sheet>

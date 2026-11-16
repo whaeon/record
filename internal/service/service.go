@@ -1,8 +1,12 @@
 package service
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
+	"encoding/csv"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -289,6 +293,66 @@ func (s *Service) ListMetrics(ctx context.Context, from, to, strategyIDRaw strin
 
 func (s *Service) ListMetricDates(ctx context.Context) ([]string, error) {
 	return s.metrics.ListDates(ctx)
+}
+
+func (s *Service) ExportMetricsCSV(ctx context.Context) ([]byte, error) {
+	list, err := s.ListMetrics(ctx, "", "", "")
+	if err != nil {
+		return nil, err
+	}
+	var buf bytes.Buffer
+	buf.Write([]byte{0xEF, 0xBB, 0xBF})
+	w := csv.NewWriter(&buf)
+	if err := w.Write([]string{
+		"id", "date", "strategy_id", "strategy_name",
+		"total_picks", "limit_up_count", "failed_limit_count",
+		"seal_rate", "break_rate",
+	}); err != nil {
+		return nil, err
+	}
+	for _, m := range list {
+		if err := w.Write([]string{
+			strconv.FormatInt(m.ID, 10),
+			m.Date,
+			strconv.FormatInt(m.StrategyID, 10),
+			m.StrategyName,
+			strconv.Itoa(m.TotalPicks),
+			strconv.Itoa(m.LimitUpCount),
+			strconv.Itoa(m.FailedLimitCount),
+			fmt.Sprintf("%.6f", m.SealRate),
+			fmt.Sprintf("%.6f", m.BreakRate),
+		}); err != nil {
+			return nil, err
+		}
+	}
+	w.Flush()
+	if err := w.Error(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func (s *Service) ExportNotesZip(ctx context.Context) ([]byte, error) {
+	list, err := s.notes.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	for _, n := range list {
+		name := n.Date + ".md"
+		f, err := zw.Create(name)
+		if err != nil {
+			return nil, err
+		}
+		if _, err := f.Write([]byte(n.Content)); err != nil {
+			return nil, err
+		}
+	}
+	if err := zw.Close(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 func (s *Service) ListNotes(ctx context.Context) ([]model.ReviewNote, error) {

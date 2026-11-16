@@ -7,7 +7,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o /out/api .
 
 FROM debian:bookworm-slim
 RUN apt-get update \
-	&& apt-get install -y --no-install-recommends ca-certificates curl \
+	&& apt-get install -y --no-install-recommends ca-certificates curl postgresql-client \
 	&& rm -rf /var/lib/apt/lists/*
 COPY --from=build /out/api /api
 EXPOSE 8080

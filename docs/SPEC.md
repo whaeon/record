@@ -17,6 +17,7 @@ Windows 本地、当前单用户、非公网部署。当前为 Docker Compose �
 - 数据库：PostgreSQL 16；驱动 `github.com/jackc/pgx/v5/stdlib`（database/sql，禁止 ORM）
 - 连接：环境变量 `DATABASE_URL`；缺省 `postgres://record:record@127.0.0.1:5432/record?sslmode=disable`
 - 默认用户：环境变量 `DEFAULT_USER_ID`；缺省 `1`。auth 中间件当前直接返回该用户，前端免登录
+- 备份：启动时与每小时检查；当日尚无文件则 `pg_dump` 到 `BACKUP_DIR`（缺省 `backups/`），文件名 `record-YYYY-MM-DD.sql`，保留最近 14 份；失败只记日志，不阻塞启动
 - 编排：Docker Compose（db healthcheck `pg_isready`；api `depends_on: condition: service_healthy`；api 连库 5 次退避重试后退出，不得 panic）
 - 前端：React 19 + TypeScript + Vite
 - 样式：Tailwind CSS（dark mode 使用 class 策略）
@@ -144,6 +145,10 @@ src/pages, src/components, src/api
 - GET /api/notes/:date ［已实现］　不存在返回 200 + 空 content
 - PUT /api/notes/:date ［已实现］　upsert
 - GET /api/notes ［待实现］　复盘记录列表（date、摘要、updated_at），date 倒序
+
+### 导出
+- GET /api/export/metrics.csv ［已实现］　当前用户 schema 全部指标，CSV 含表头（UTF-8 BOM）
+- GET /api/export/notes.md ［已实现］　当前用户 schema 全部复盘，zip（每日一个 .md）
 
 ### 通用约定
 - 错误响应统一为 `{ "error": "...", "code": "..." }`

@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/whaeon/record/internal/auth"
+	"github.com/whaeon/record/internal/backup"
 	"github.com/whaeon/record/internal/db"
 	"github.com/whaeon/record/internal/handler"
 	"github.com/whaeon/record/internal/repository"
@@ -41,6 +42,8 @@ func main() {
 		repository.NewMetricRepository(database),
 		repository.NewNoteRepository(database),
 	)
+
+	backup.Start(dsn)
 
 	r := gin.Default()
 	handler.New(svc).Register(r, auth.Middleware(auth.NewStatic(defaultUserID)), db.WithUserSchema(database))
