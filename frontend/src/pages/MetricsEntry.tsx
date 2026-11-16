@@ -13,6 +13,7 @@ import {
   deleteStrategy,
   listRevisions,
   listStrategies,
+  setStrategyActive,
   updateStrategy,
   type Strategy,
   type StrategyRevision,
@@ -116,6 +117,9 @@ export default function MetricsEntry() {
   const [creating, setCreating] = useState(false)
   const [pendingDelete, setPendingDelete] = useState<Strategy | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [strategySearch, setStrategySearch] = useState("")
+  const [pendingDeactivate, setPendingDeactivate] = useState<Strategy | null>(null)
+  const [toggling, setToggling] = useState(false)
   const [editing, setEditing] = useState<Strategy | null>(null)
   const [editName, setEditName] = useState("")
   const [editDetail, setEditDetail] = useState("")
@@ -146,15 +150,22 @@ export default function MetricsEntry() {
   const skipBatchCloseToast = useRef(false)
 
   const empty = strategies.length === 0
+  const activeStrategies = useMemo(() => strategies.filter((s) => s.is_active), [strategies])
+  const filteredStrategies = useMemo(() => {
+    const q = strategySearch.trim().toLowerCase()
+    if (!q) return strategies
+    return strategies.filter((s) => s.name.toLowerCase().includes(q))
+  }, [strategies, strategySearch])
+  const noActive = activeStrategies.length === 0
   const selected = useMemo(
-    () => strategies.find((s) => s.id === strategyId) ?? null,
-    [strategies, strategyId]
+    () => activeStrategies.find((s) => s.id === strategyId) ?? null,
+    [activeStrategies, strategyId]
   )
 
   async function refreshStrategies() {
     const list = await listStrategies()
     setStrategies(list)
-    setStrategyId((prev) => (list.some((s) => s.id === prev) ? prev : 0))
+    setStrategyId((prev) => (list.some((s) => s.id === prev && s.is_active) ? prev : 0))
   }
 
   useEffect(() => {
@@ -258,6 +269,34 @@ export default function MetricsEntry() {
     }
   }
 
+  async function onConfirmDeactivate() {
+    if (!pendingDeactivate) return
+    setToggling(true)
+    try {
+      await setStrategyActive(pendingDeactivate.id, false)
+      toast.success("已停用交易策略")
+      setPendingDeactivate(null)
+      await refreshStrategies()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "停用失败")
+    } finally {
+      setToggling(false)
+    }
+  }
+
+  async function onActivate(s: Strategy) {
+    setToggling(true)
+    try {
+      await setStrategyActive(s.id, true)
+      toast.success("已启用交易策略")
+      await refreshStrategies()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "启用失败")
+    } finally {
+      setToggling(false)
+    }
+  }
+
   async function onConfirmDelete() {
     if (!pendingDelete) return
     setDeleting(true)
@@ -348,7 +387,7 @@ export default function MetricsEntry() {
     | { ok: true; items: { strategy: Strategy; payload: CreateMetricInput }[] }
     | { ok: false; reason: "empty" | "invalid" } {
     const items: { strategy: Strategy; payload: CreateMetricInput }[] = []
-    for (const s of strategies) {
+    for (const s of activeStrategies) {
       const parsed = parseBatchRow(batchRowFor(s.id))
       if (parsed.kind === "empty") continue
       if (parsed.kind === "invalid") return { ok: false, reason: "invalid" }
@@ -484,48 +523,79 @@ export default function MetricsEntry() {
             ) : empty ? (
               <p className="text-sm text-muted-foreground">暂无交易策略</p>
             ) : (
-              <ul className="grid gap-3">
-                {strategies.map((s) => (
-                  <li
-                    key={s.id}
-                    className="flex flex-wrap items-start justify-between gap-3 rounded-lg border p-3"
-                  >
-                    <div className="min-w-0 flex-1 grid gap-1">
-                      <div className="font-medium">{s.name}</div>
-                      <p className="text-sm text-muted-foreground">{summarize(s.current_detail)}</p>
-                      <p className="text-xs text-muted-foreground">
-                        创建 {formatDateTime(s.created_at)} · 最后修改 {formatDateTime(s.updated_at)}
-                      </p>
-                    </div>
-                     <div className="flex w-full flex-wrap gap-2 md:w-auto">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openEdit(s)}
+              <>
+                <div className="grid gap-2">
+                  <Label htmlFor="strategy-search">搜索</Label>
+                  <Input
+                    id="strategy-search"
+                    value={strategySearch}
+                    onChange={(e) => setStrategySearch(e.target.value)}
+                    placeholder="按名称搜索"
+                  />
+                </div>
+                {filteredStrategies.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">未找到匹配的交易策略</p>
+                ) : (
+                  <ul className="grid gap-3">
+                    {filteredStrategies.map((s) => (
+                      <li
+                        key={s.id}
+                        className="flex flex-wrap items-start justify-between gap-3 rounded-lg border p-3"
                       >
-                        编辑
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openHistory(s)}
-                      >
-                        改动记录
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => setPendingDelete(s)}
-                      >
-                        删除
-                      </Button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+                        <div className="min-w-0 flex-1 grid gap-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-medium">{s.name}</span>
+                            {!s.is_active ? (
+                              <span className="text-xs text-muted-foreground">已停用</span>
+                            ) : null}
+                          </div>
+                          <p className="text-sm text-muted-foreground">{summarize(s.current_detail)}</p>
+                          <p className="text-xs text-muted-foreground">
+                            创建 {formatDateTime(s.created_at)} · 最后修改 {formatDateTime(s.updated_at)}
+                          </p>
+                        </div>
+                        <div className="flex w-full flex-wrap gap-2 md:w-auto">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={toggling}
+                            onClick={() =>
+                              s.is_active ? setPendingDeactivate(s) : void onActivate(s)
+                            }
+                          >
+                            {s.is_active ? "停用" : "启用"}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openEdit(s)}
+                          >
+                            编辑
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openHistory(s)}
+                          >
+                            改动记录
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => setPendingDelete(s)}
+                          >
+                            删除
+                          </Button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
             )}
           </div>
         </CardContent>
@@ -536,11 +606,13 @@ export default function MetricsEntry() {
           <CardTitle>批量录入</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4">
-          {empty ? (
+          {noActive ? (
             <div className="grid gap-3">
-              <p className="text-sm text-muted-foreground">请先创建交易策略</p>
+              <p className="text-sm text-muted-foreground">
+                {empty ? "请先创建交易策略" : "请先启用交易策略"}
+              </p>
               <Button type="button" onClick={jumpToCreate}>
-                去创建交易策略
+                {empty ? "去创建交易策略" : "去管理交易策略"}
               </Button>
             </div>
           ) : (
@@ -550,7 +622,7 @@ export default function MetricsEntry() {
                 <DatePicker id="batch-date" mode="entry" value={batchDate} onChange={setBatchDate} />
               </div>
               <ul className="grid gap-3 md:hidden">
-                {strategies.map((s) => {
+                {activeStrategies.map((s) => {
                   const row = batchRowFor(s.id)
                   return (
                     <li key={s.id} className="grid gap-3 rounded-lg border p-3">
@@ -606,7 +678,7 @@ export default function MetricsEntry() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {strategies.map((s) => {
+                    {activeStrategies.map((s) => {
                       const row = batchRowFor(s.id)
                       return (
                         <TableRow key={s.id}>
@@ -663,11 +735,13 @@ export default function MetricsEntry() {
           <CardTitle>指标录入</CardTitle>
         </CardHeader>
         <CardContent>
-          {empty ? (
+          {noActive ? (
             <div className="grid gap-3">
-              <p className="text-sm text-muted-foreground">请先创建交易策略</p>
+              <p className="text-sm text-muted-foreground">
+                {empty ? "请先创建交易策略" : "请先启用交易策略"}
+              </p>
               <Button type="button" onClick={jumpToCreate}>
-                去创建交易策略
+                {empty ? "去创建交易策略" : "去管理交易策略"}
               </Button>
               <fieldset disabled className="grid gap-4 opacity-50">
                 <MetricFields
@@ -708,7 +782,7 @@ export default function MetricsEntry() {
                       <CommandList>
                         <CommandEmpty>未找到交易策略</CommandEmpty>
                         <CommandGroup>
-                          {strategies.map((s) => (
+                          {activeStrategies.map((s) => (
                             <CommandItem
                               key={s.id}
                               value={s.name}
@@ -815,6 +889,33 @@ export default function MetricsEntry() {
               }}
             >
               {batchUpdating ? "更新中..." : "确认覆盖"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={pendingDeactivate !== null}
+        onOpenChange={(open) => !open && setPendingDeactivate(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认停用交易策略</AlertDialogTitle>
+            <AlertDialogDescription>
+              历史指标保留，但不再出现在录入选项
+              {pendingDeactivate ? `（${pendingDeactivate.name}）` : ""}。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={toggling}>取消</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={toggling}
+              onClick={(e) => {
+                e.preventDefault()
+                void onConfirmDeactivate()
+              }}
+            >
+              {toggling ? "停用中..." : "确认停用"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

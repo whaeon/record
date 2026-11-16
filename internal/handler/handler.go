@@ -27,6 +27,7 @@ func (h *Handler) Register(r *gin.Engine, mws ...gin.HandlerFunc) {
 	api.POST("/strategies", h.CreateStrategy)
 	api.GET("/strategies/:id/revisions", h.ListRevisions)
 	api.GET("/strategies/:id", h.GetStrategy)
+	api.PUT("/strategies/:id/active", h.SetStrategyActive)
 	api.PUT("/strategies/:id", h.UpdateStrategy)
 	api.DELETE("/strategies/:id", h.DeleteStrategy)
 
@@ -47,6 +48,10 @@ type strategyRequest struct {
 	Name          string `json:"name"`
 	CurrentDetail string `json:"current_detail"`
 	Note          string `json:"note"`
+}
+
+type strategyActiveRequest struct {
+	IsActive *bool `json:"is_active"`
 }
 
 type metricRequest struct {
@@ -108,6 +113,28 @@ func (h *Handler) UpdateStrategy(c *gin.Context) {
 		return
 	}
 	st, err := h.svc.UpdateStrategy(c.Request.Context(), id, req.Name, req.CurrentDetail, req.Note)
+	if err != nil {
+		writeError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, st)
+}
+
+func (h *Handler) SetStrategyActive(c *gin.Context) {
+	id, ok := pathID(c)
+	if !ok {
+		return
+	}
+	var req strategyActiveRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if req.IsActive == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "is_active is required"})
+		return
+	}
+	st, err := h.svc.SetStrategyActive(c.Request.Context(), id, *req.IsActive)
 	if err != nil {
 		writeError(c, err)
 		return

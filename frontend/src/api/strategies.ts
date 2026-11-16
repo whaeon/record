@@ -4,6 +4,7 @@ export type Strategy = {
   id: number
   name: string
   current_detail: string
+  is_active: boolean
   created_at: string
   updated_at: string
 }
@@ -40,6 +41,15 @@ export type StrategyRevision = {
   detail: string
   note: string
   changed_at: string
+}
+
+export async function setStrategyActive(id: number, is_active: boolean): Promise<Strategy> {
+  const res = await fetch(`/api/strategies/${id}/active`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ is_active }),
+  })
+  return parseJson<Strategy>(res)
 }
 
 export async function updateStrategy(

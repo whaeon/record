@@ -4,6 +4,7 @@ type Strategy struct {
 	ID            int64  `json:"id"`
 	Name          string `json:"name"`
 	CurrentDetail string `json:"current_detail"`
+	IsActive      bool   `json:"is_active"`
 	CreatedAt     string `json:"created_at"`
 	UpdatedAt     string `json:"updated_at"`
 }

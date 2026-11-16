@@ -260,7 +260,11 @@ export default function MetricsChart() {
                     aria-expanded={pickerOpen}
                     className="w-full justify-between font-normal"
                   >
-                    {selected ? selected.name : "全部策略"}
+                    {selected
+                      ? selected.is_active
+                        ? selected.name
+                        : `${selected.name}（已停用）`
+                      : "全部策略"}
                     <ChevronsUpDown className="size-4 opacity-50" />
                   </Button>
                 </PopoverTrigger>
@@ -290,7 +294,7 @@ export default function MetricsChart() {
                               setPickerOpen(false)
                             }}
                           >
-                            {s.name}
+                            {s.is_active ? s.name : `${s.name}（已停用）`}
                           </CommandItem>
                         ))}
                       </CommandGroup>

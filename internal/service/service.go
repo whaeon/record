@@ -82,6 +82,7 @@ func (s *Service) CreateStrategy(ctx context.Context, name, detail string) (*mod
 	st := &model.Strategy{
 		Name:          name,
 		CurrentDetail: detail,
+		IsActive:      true,
 		CreatedAt:     now,
 		UpdatedAt:     now,
 	}
@@ -143,6 +144,25 @@ func (s *Service) UpdateStrategy(ctx context.Context, id int64, name, detail, no
 		if isUniqueConstraint(err) {
 			return nil, ErrNameConflict
 		}
+		return nil, err
+	}
+	return st, nil
+}
+
+func (s *Service) SetStrategyActive(ctx context.Context, id int64, active bool) (*model.Strategy, error) {
+	st, err := s.strategies.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if st == nil {
+		return nil, ErrNotFound
+	}
+	if st.IsActive == active {
+		return st, nil
+	}
+	st.IsActive = active
+	st.UpdatedAt = nowISO()
+	if err := s.strategies.Update(ctx, st, nil); err != nil {
 		return nil, err
 	}
 	return st, nil

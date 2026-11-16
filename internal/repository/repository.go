@@ -24,10 +24,10 @@ func (r *StrategyRepository) Create(ctx context.Context, s *model.Strategy, revi
 	defer tx.Rollback()
 
 	err = tx.QueryRowContext(ctx,
-		`INSERT INTO strategies (name, current_detail, created_at, updated_at)
-		 VALUES ($1, $2, $3, $4)
+		`INSERT INTO strategies (name, current_detail, is_active, created_at, updated_at)
+		 VALUES ($1, $2, $3, $4, $5)
 		 RETURNING id`,
-		s.Name, s.CurrentDetail, s.CreatedAt, s.UpdatedAt,
+		s.Name, s.CurrentDetail, s.IsActive, s.CreatedAt, s.UpdatedAt,
 	).Scan(&s.ID)
 	if err != nil {
 		return err
@@ -49,9 +49,9 @@ func (r *StrategyRepository) Create(ctx context.Context, s *model.Strategy, revi
 func (r *StrategyRepository) GetByID(ctx context.Context, id int64) (*model.Strategy, error) {
 	var s model.Strategy
 	err := q(ctx, r.db).QueryRowContext(ctx,
-		`SELECT id, name, current_detail, created_at, updated_at FROM strategies WHERE id = $1`,
+		`SELECT id, name, current_detail, is_active, created_at, updated_at FROM strategies WHERE id = $1`,
 		id,
-	).Scan(&s.ID, &s.Name, &s.CurrentDetail, &s.CreatedAt, &s.UpdatedAt)
+	).Scan(&s.ID, &s.Name, &s.CurrentDetail, &s.IsActive, &s.CreatedAt, &s.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -64,9 +64,9 @@ func (r *StrategyRepository) GetByID(ctx context.Context, id int64) (*model.Stra
 func (r *StrategyRepository) GetByName(ctx context.Context, name string) (*model.Strategy, error) {
 	var s model.Strategy
 	err := q(ctx, r.db).QueryRowContext(ctx,
-		`SELECT id, name, current_detail, created_at, updated_at FROM strategies WHERE name = $1`,
+		`SELECT id, name, current_detail, is_active, created_at, updated_at FROM strategies WHERE name = $1`,
 		name,
-	).Scan(&s.ID, &s.Name, &s.CurrentDetail, &s.CreatedAt, &s.UpdatedAt)
+	).Scan(&s.ID, &s.Name, &s.CurrentDetail, &s.IsActive, &s.CreatedAt, &s.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -78,7 +78,7 @@ func (r *StrategyRepository) GetByName(ctx context.Context, name string) (*model
 
 func (r *StrategyRepository) List(ctx context.Context) ([]model.Strategy, error) {
 	rows, err := q(ctx, r.db).QueryContext(ctx,
-		`SELECT id, name, current_detail, created_at, updated_at FROM strategies ORDER BY id ASC`,
+		`SELECT id, name, current_detail, is_active, created_at, updated_at FROM strategies ORDER BY id ASC`,
 	)
 	if err != nil {
 		return nil, err
@@ -88,7 +88,7 @@ func (r *StrategyRepository) List(ctx context.Context) ([]model.Strategy, error)
 	list := make([]model.Strategy, 0)
 	for rows.Next() {
 		var s model.Strategy
-		if err := rows.Scan(&s.ID, &s.Name, &s.CurrentDetail, &s.CreatedAt, &s.UpdatedAt); err != nil {
+		if err := rows.Scan(&s.ID, &s.Name, &s.CurrentDetail, &s.IsActive, &s.CreatedAt, &s.UpdatedAt); err != nil {
 			return nil, err
 		}
 		list = append(list, s)
@@ -104,8 +104,8 @@ func (r *StrategyRepository) Update(ctx context.Context, s *model.Strategy, revi
 	defer tx.Rollback()
 
 	_, err = tx.ExecContext(ctx,
-		`UPDATE strategies SET name = $1, current_detail = $2, updated_at = $3 WHERE id = $4`,
-		s.Name, s.CurrentDetail, s.UpdatedAt, s.ID,
+		`UPDATE strategies SET name = $1, current_detail = $2, is_active = $3, updated_at = $4 WHERE id = $5`,
+		s.Name, s.CurrentDetail, s.IsActive, s.UpdatedAt, s.ID,
 	)
 	if err != nil {
 		return err

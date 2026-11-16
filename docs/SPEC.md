@@ -80,11 +80,13 @@ src/pages, src/components, src/api
 - id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY
 - name TEXT NOT NULL UNIQUE
 - current_detail TEXT NOT NULL　—— 仅存人类可读的策略说明；未来可执行参数另开字段/表
+- is_active BOOLEAN NOT NULL DEFAULT TRUE　—— 停用后仍保留历史指标，但不出现在录入选项
 - created_at TEXT NOT NULL（ISO8601）
 - updated_at TEXT NOT NULL（ISO8601）
 - 规则：name 可修改，改成已存在名称时接口返回 409
 - 规则：current_detail 发生变化时，自动向 strategy_revisions 插入新版本
 - 规则：删除必须带 confirm=true，级联删除关联 metrics 与 revisions
+- 规则：停用不删除历史指标；图表筛选仍显示停用策略
 
 ### strategy_revisions（策略内容改动记录）［已确认］
 - id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY
@@ -128,10 +130,11 @@ src/pages, src/components, src/api
 ## API 契约
 
 ### 策略
-- GET    /api/strategies ［待实现］
-- POST   /api/strategies ［待实现］　name 重复 409；current_detail 空 400；成功后同时插入首条 revision
+- GET    /api/strategies ［已实现］　返回全部策略（含停用），含 is_active
+- POST   /api/strategies ［待实现］　name 重复 409；current_detail 空 400；成功后同时插入首条 revision；is_active 默认 true
 - GET    /api/strategies/:id ［待实现］
 - PUT    /api/strategies/:id ［待实现］　改名冲突 409；内容变化插入新 revision（可带 note）；更新 updated_at
+- PUT    /api/strategies/:id/active ［已实现］　body `{ "is_active": true|false }`；停用不删历史数据、不生成 revision
 - DELETE /api/strategies/:id?confirm=true ［待实现］　未带 confirm 且存在关联数据 409；带 confirm 级联删除
 - GET    /api/strategies/:id/revisions ［待实现］　changed_at 倒序
 
