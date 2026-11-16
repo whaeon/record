@@ -6,6 +6,7 @@
 
 ## 2026-11
 
+- 2026-11-16 ｜ T-17：指标批量录入 ｜ frontend/src/pages/MetricsEntry.tsx ｜ 验收通过 ｜ 无 ｜ 无 API 路径/参数变更、无数据结构变更
 - 2026-11-16 ｜ T-16：手机端响应式适配 ｜ frontend/src/App.tsx、frontend/src/pages/{MetricsChart,MetricsEntry,ReviewNotes}.tsx、frontend/src/components/{date-picker,ui/button,ui/input}.tsx、frontend/src/index.css、frontend/src/hooks/use-media-query.ts ｜ 验收通过 ｜ 无 ｜ 无 API 路径/参数变更、无数据结构变更
 - 2026-11-16 ｜ T-15：多用户 schema 隔离 + 默认用户免登录 ｜ internal/auth、internal/db、internal/repository、internal/handler、internal/service、main.go、docker-compose.yml、docs/SPEC.md ｜ 验收通过 ｜ 本环境无 Docker，按 WORKFLOW C 用本机 PostgreSQL 15 等价验证；`docker compose up` 待有 Docker 的环境再跑 ｜ 新增 public.users 与 user_<id> schema 隔离；auth 中间件读 DEFAULT_USER_ID（缺省 1）；无 API 路径/参数变更
 - 2026-11-16 ｜ T-14b：文档体系收缩与 SPEC 合并 ｜ AGENTS.md、docs/SPEC.md、docs/WORKFLOW.md、docs/QUEUE.md、docs/CHANGELOG.md（由 01–05、07 收缩；06 仅顶部追加后改名为 CHANGELOG） ｜ 待验收 ｜ 无 ｜ 文档体系收缩 7→4；修正 T-14 遗留的 01 文档脱节；规则从锁定制改为登记制；无 API 路径/参数变更、无表结构语义变更

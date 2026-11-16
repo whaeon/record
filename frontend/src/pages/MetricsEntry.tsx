@@ -1,7 +1,13 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react"
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react"
 import { ChevronsUpDown } from "lucide-react"
 import { toast } from "sonner"
-import { createMetric, existingMetricFromConflict, updateMetric, type StrategyMetric } from "@/api/metrics"
+import {
+  createMetric,
+  existingMetricFromConflict,
+  updateMetric,
+  type CreateMetricInput,
+  type StrategyMetric,
+} from "@/api/metrics"
 import {
   createStrategy,
   deleteStrategy,
@@ -18,6 +24,14 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
 import {
   AlertDialog,
@@ -58,6 +72,42 @@ function summarize(text: string, max = 48): string {
   return `${t.slice(0, max)}...`
 }
 
+type BatchRow = {
+  totalPicks: string
+  limitUpCount: string
+  failedLimitCount: string
+}
+
+const emptyBatchRow = (): BatchRow => ({
+  totalPicks: "",
+  limitUpCount: "",
+  failedLimitCount: "",
+})
+
+function parseNonNegInt(raw: string): number | null {
+  const t = raw.trim()
+  if (t === "") return 0
+  if (!/^\d+$/.test(t)) return null
+  return Number(t)
+}
+
+type ParsedBatchRow =
+  | { kind: "empty" }
+  | { kind: "invalid" }
+  | { kind: "ok"; total_picks: number; limit_up_count: number; failed_limit_count: number }
+
+function parseBatchRow(row: BatchRow): ParsedBatchRow {
+  const filled = [row.totalPicks, row.limitUpCount, row.failedLimitCount].some((v) => v.trim() !== "")
+  if (!filled) return { kind: "empty" }
+  const total_picks = parseNonNegInt(row.totalPicks)
+  const limit_up_count = parseNonNegInt(row.limitUpCount)
+  const failed_limit_count = parseNonNegInt(row.failedLimitCount)
+  if (total_picks === null || limit_up_count === null || failed_limit_count === null) {
+    return { kind: "invalid" }
+  }
+  return { kind: "ok", total_picks, limit_up_count, failed_limit_count }
+}
+
 export default function MetricsEntry() {
   const [strategies, setStrategies] = useState<Strategy[]>([])
   const [loading, setLoading] = useState(true)
@@ -84,6 +134,16 @@ export default function MetricsEntry() {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [conflict, setConflict] = useState<StrategyMetric | null>(null)
   const [updating, setUpdating] = useState(false)
+
+  const [batchDate, setBatchDate] = useState(todayISO)
+  const [batchRows, setBatchRows] = useState<Record<number, BatchRow>>({})
+  const [batchSubmitting, setBatchSubmitting] = useState(false)
+  const [batchConflicts, setBatchConflicts] = useState<
+    { strategy: Strategy; existing: StrategyMetric; payload: CreateMetricInput }[]
+  >([])
+  const [batchUpdating, setBatchUpdating] = useState(false)
+  const [batchCreatedCount, setBatchCreatedCount] = useState(0)
+  const skipBatchCloseToast = useRef(false)
 
   const empty = strategies.length === 0
   const selected = useMemo(
@@ -273,8 +333,120 @@ export default function MetricsEntry() {
     document.getElementById("strategy-name")?.focus()
   }
 
+  function batchRowFor(id: number): BatchRow {
+    return batchRows[id] ?? emptyBatchRow()
+  }
+
+  function setBatchField(id: number, field: keyof BatchRow, value: string) {
+    setBatchRows((prev) => ({
+      ...prev,
+      [id]: { ...emptyBatchRow(), ...prev[id], [field]: value },
+    }))
+  }
+
+  function collectFilledRows():
+    | { ok: true; items: { strategy: Strategy; payload: CreateMetricInput }[] }
+    | { ok: false; reason: "empty" | "invalid" } {
+    const items: { strategy: Strategy; payload: CreateMetricInput }[] = []
+    for (const s of strategies) {
+      const parsed = parseBatchRow(batchRowFor(s.id))
+      if (parsed.kind === "empty") continue
+      if (parsed.kind === "invalid") return { ok: false, reason: "invalid" }
+      items.push({
+        strategy: s,
+        payload: {
+          date: batchDate,
+          strategy_id: s.id,
+          total_picks: parsed.total_picks,
+          limit_up_count: parsed.limit_up_count,
+          failed_limit_count: parsed.failed_limit_count,
+        },
+      })
+    }
+    if (items.length === 0) return { ok: false, reason: "empty" }
+    return { ok: true, items }
+  }
+
+  function clearBatchRows(ids: number[]) {
+    setBatchRows((prev) => {
+      const next = { ...prev }
+      for (const id of ids) delete next[id]
+      return next
+    })
+  }
+
+  async function onSubmitBatch() {
+    const collected = collectFilledRows()
+    if (!collected.ok) {
+      toast.error(collected.reason === "invalid" ? "请填写非负整数" : "至少填写一行再提交")
+      return
+    }
+    setBatchSubmitting(true)
+    let created = 0
+    const conflicts: { strategy: Strategy; existing: StrategyMetric; payload: CreateMetricInput }[] = []
+    const createdIds: number[] = []
+    try {
+      for (const item of collected.items) {
+        try {
+          await createMetric(item.payload)
+          created += 1
+          createdIds.push(item.strategy.id)
+        } catch (err) {
+          const existing = existingMetricFromConflict(err)
+          if (existing) {
+            conflicts.push({ strategy: item.strategy, existing, payload: item.payload })
+          } else {
+            toast.error(
+              `${item.strategy.name}：${err instanceof Error ? err.message : "提交失败"}`
+            )
+            return
+          }
+        }
+      }
+      clearBatchRows(createdIds)
+      if (conflicts.length > 0) {
+        setBatchCreatedCount(created)
+        setBatchConflicts(conflicts)
+      } else {
+        setBatchCreatedCount(0)
+        toast.success(`成功 ${created} 条，更新 0 条`)
+      }
+    } finally {
+      setBatchSubmitting(false)
+    }
+  }
+
+  async function onConfirmBatchUpdate() {
+    if (batchConflicts.length === 0) return
+    setBatchUpdating(true)
+    let updated = 0
+    const updatedIds: number[] = []
+    try {
+      for (const item of batchConflicts) {
+        try {
+          await updateMetric(item.existing.id, item.payload)
+          updated += 1
+          updatedIds.push(item.strategy.id)
+        } catch (err) {
+          toast.error(
+            `${item.strategy.name}：${err instanceof Error ? err.message : "更新失败"}`
+          )
+          clearBatchRows(updatedIds)
+          return
+        }
+      }
+      clearBatchRows(updatedIds)
+      skipBatchCloseToast.current = true
+      setBatchConflicts([])
+      toast.success(`成功 ${batchCreatedCount} 条，更新 ${updated} 条`)
+      setBatchCreatedCount(0)
+    } finally {
+      setBatchUpdating(false)
+    }
+  }
+
   return (
-    <div className="mx-auto grid max-w-3xl gap-6">
+    <div className="mx-auto grid max-w-5xl gap-6">
       <Card id="strategy-create">
         <CardHeader>
           <CardTitle>交易策略</CardTitle>
@@ -356,6 +528,133 @@ export default function MetricsEntry() {
               </ul>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>批量录入</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          {empty ? (
+            <div className="grid gap-3">
+              <p className="text-sm text-muted-foreground">请先创建交易策略</p>
+              <Button type="button" onClick={jumpToCreate}>
+                去创建交易策略
+              </Button>
+            </div>
+          ) : (
+            <>
+              <div className="grid gap-2">
+                <Label htmlFor="batch-date">日期</Label>
+                <DatePicker id="batch-date" mode="entry" value={batchDate} onChange={setBatchDate} />
+              </div>
+              <ul className="grid gap-3 md:hidden">
+                {strategies.map((s) => {
+                  const row = batchRowFor(s.id)
+                  return (
+                    <li key={s.id} className="grid gap-3 rounded-lg border p-3">
+                      <div className="font-medium">{s.name}</div>
+                      <div className="grid gap-2">
+                        <Label htmlFor={`batch-picks-${s.id}`}>筛出票数</Label>
+                        <Input
+                          id={`batch-picks-${s.id}`}
+                          type="number"
+                          min={0}
+                          step={1}
+                          inputMode="numeric"
+                          value={row.totalPicks}
+                          onChange={(e) => setBatchField(s.id, "totalPicks", e.target.value)}
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor={`batch-limit-${s.id}`}>涨停数</Label>
+                        <Input
+                          id={`batch-limit-${s.id}`}
+                          type="number"
+                          min={0}
+                          step={1}
+                          inputMode="numeric"
+                          value={row.limitUpCount}
+                          onChange={(e) => setBatchField(s.id, "limitUpCount", e.target.value)}
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor={`batch-fail-${s.id}`}>炸板数</Label>
+                        <Input
+                          id={`batch-fail-${s.id}`}
+                          type="number"
+                          min={0}
+                          step={1}
+                          inputMode="numeric"
+                          value={row.failedLimitCount}
+                          onChange={(e) => setBatchField(s.id, "failedLimitCount", e.target.value)}
+                        />
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>交易策略</TableHead>
+                      <TableHead>筛出票数</TableHead>
+                      <TableHead>涨停数</TableHead>
+                      <TableHead>炸板数</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {strategies.map((s) => {
+                      const row = batchRowFor(s.id)
+                      return (
+                        <TableRow key={s.id}>
+                          <TableCell className="font-medium">{s.name}</TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              min={0}
+                              step={1}
+                              inputMode="numeric"
+                              aria-label={`${s.name} 筛出票数`}
+                              value={row.totalPicks}
+                              onChange={(e) => setBatchField(s.id, "totalPicks", e.target.value)}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              min={0}
+                              step={1}
+                              inputMode="numeric"
+                              aria-label={`${s.name} 涨停数`}
+                              value={row.limitUpCount}
+                              onChange={(e) => setBatchField(s.id, "limitUpCount", e.target.value)}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              min={0}
+                              step={1}
+                              inputMode="numeric"
+                              aria-label={`${s.name} 炸板数`}
+                              value={row.failedLimitCount}
+                              onChange={(e) => setBatchField(s.id, "failedLimitCount", e.target.value)}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+              <Button type="button" disabled={batchSubmitting} onClick={() => void onSubmitBatch()}>
+                {batchSubmitting ? "提交中..." : "全部提交"}
+              </Button>
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -466,6 +765,56 @@ export default function MetricsEntry() {
               }}
             >
               {updating ? "更新中..." : "确认修改"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={batchConflicts.length > 0}
+        onOpenChange={(open) => {
+          if (open) return
+          if (batchUpdating) return
+          if (skipBatchCloseToast.current) {
+            skipBatchCloseToast.current = false
+            setBatchCreatedCount(0)
+            setBatchConflicts([])
+            return
+          }
+          if (batchCreatedCount > 0) {
+            toast.success(`成功 ${batchCreatedCount} 条，更新 0 条`)
+          }
+          setBatchCreatedCount(0)
+          setBatchConflicts([])
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>部分策略该日期已有记录，是否覆盖？</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="grid gap-2 text-sm text-muted-foreground">
+                <p>确认后将用当前填写的数字覆盖以下记录：</p>
+                <ul className="grid gap-1">
+                  {batchConflicts.map((item) => (
+                    <li key={item.strategy.id}>
+                      {item.strategy.name}：筛出 {item.existing.total_picks}，涨停{" "}
+                      {item.existing.limit_up_count}，炸板 {item.existing.failed_limit_count}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={batchUpdating}>取消</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={batchUpdating}
+              onClick={(e) => {
+                e.preventDefault()
+                void onConfirmBatchUpdate()
+              }}
+            >
+              {batchUpdating ? "更新中..." : "确认覆盖"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
