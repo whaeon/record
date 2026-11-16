@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react"
-import { ArrowDown, ArrowUp, Minus } from "lucide-react"
+import { ArrowDown, ArrowUp, Inbox, Minus } from "lucide-react"
 import { listMetrics, type StrategyMetric } from "@/api/metrics"
 import { formatPercent, previousTradingDay, todayISO } from "@/lib/date"
+import { toastApiError } from "@/lib/notify"
+import { EmptyState } from "@/components/empty-state"
+import { StatsSkeleton } from "@/components/skeletons"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 
@@ -57,12 +60,11 @@ export function TodayStats({ refreshToken = 0 }: { refreshToken?: number }) {
   const [todayRow, setTodayRow] = useState<StrategyMetric | null>(null)
   const [prevRow, setPrevRow] = useState<StrategyMetric | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState("")
+  const [reloadTick, setReloadTick] = useState(0)
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    setError("")
     listMetrics({ from: prevDay, to: today, strategy_id: "all" })
       .then((rows) => {
         if (cancelled) return
@@ -71,7 +73,9 @@ export function TodayStats({ refreshToken = 0 }: { refreshToken?: number }) {
       })
       .catch((err: unknown) => {
         if (cancelled) return
-        setError(err instanceof Error ? err.message : "加载失败")
+        toastApiError(err, "加载今日指标失败", () => setReloadTick((n) => n + 1))
+        setTodayRow(null)
+        setPrevRow(null)
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -79,23 +83,13 @@ export function TodayStats({ refreshToken = 0 }: { refreshToken?: number }) {
     return () => {
       cancelled = true
     }
-  }, [today, prevDay, refreshToken])
+  }, [today, prevDay, refreshToken, reloadTick])
 
   if (loading) {
     return (
       <Card>
         <CardContent>
-          <p className="text-sm text-muted-foreground">加载今日指标...</p>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  if (error) {
-    return (
-      <Card>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">{error}</p>
+          <StatsSkeleton />
         </CardContent>
       </Card>
     )
@@ -104,11 +98,17 @@ export function TodayStats({ refreshToken = 0 }: { refreshToken?: number }) {
   if (!todayRow) {
     return (
       <Card>
-        <CardContent className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-muted-foreground">今日暂无数据</p>
-          <Button type="button" size="sm" onClick={jumpToEntry}>
-            去录入
-          </Button>
+        <CardContent>
+          <EmptyState
+            icon={Inbox}
+            title="今日暂无数据"
+            description="录入今日指标后，这里会显示命中数、涨停数与封板率。"
+            action={
+              <Button type="button" size="sm" onClick={jumpToEntry}>
+                去录入
+              </Button>
+            }
+          />
         </CardContent>
       </Card>
     )

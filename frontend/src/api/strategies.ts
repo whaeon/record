@@ -1,4 +1,4 @@
-import { ApiError, parseJson, readError } from "@/lib/http"
+import { ApiError, apiFetch, parseJson, readError } from "@/lib/http"
 
 export type Strategy = {
   id: number
@@ -10,7 +10,7 @@ export type Strategy = {
 }
 
 export async function listStrategies(): Promise<Strategy[]> {
-  const res = await fetch("/api/strategies")
+  const res = await apiFetch("/api/strategies")
   return parseJson<Strategy[]>(res)
 }
 
@@ -18,7 +18,7 @@ export async function createStrategy(input: {
   name: string
   current_detail: string
 }): Promise<Strategy> {
-  const res = await fetch("/api/strategies", {
+  const res = await apiFetch("/api/strategies", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
@@ -27,7 +27,7 @@ export async function createStrategy(input: {
 }
 
 export async function deleteStrategy(id: number): Promise<void> {
-  const res = await fetch(`/api/strategies/${id}?confirm=true`, {
+  const res = await apiFetch(`/api/strategies/${id}?confirm=true`, {
     method: "DELETE",
   })
   if (!res.ok) {
@@ -44,7 +44,7 @@ export type StrategyRevision = {
 }
 
 export async function setStrategyActive(id: number, is_active: boolean): Promise<Strategy> {
-  const res = await fetch(`/api/strategies/${id}/active`, {
+  const res = await apiFetch(`/api/strategies/${id}/active`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ is_active }),
@@ -56,7 +56,7 @@ export async function updateStrategy(
   id: number,
   input: { name: string; current_detail: string; note?: string }
 ): Promise<Strategy> {
-  const res = await fetch(`/api/strategies/${id}`, {
+  const res = await apiFetch(`/api/strategies/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
@@ -65,6 +65,6 @@ export async function updateStrategy(
 }
 
 export async function listRevisions(id: number): Promise<StrategyRevision[]> {
-  const res = await fetch(`/api/strategies/${id}/revisions`)
+  const res = await apiFetch(`/api/strategies/${id}/revisions`)
   return parseJson<StrategyRevision[]>(res)
 }

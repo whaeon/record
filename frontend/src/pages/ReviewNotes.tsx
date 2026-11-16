@@ -2,10 +2,13 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import Markdown from "react-markdown"
 import remarkGfm from "remark-gfm"
-import { Plus } from "lucide-react"
+import { NotebookPen, Plus } from "lucide-react"
 import { listMetrics, type StrategyMetric } from "@/api/metrics"
 import { getNote, listNotes, saveNote, type ReviewNote } from "@/api/notes"
 import { daysAgoISO, formatPercent, todayISO } from "@/lib/date"
+import { toastApiError } from "@/lib/notify"
+import { EmptyState } from "@/components/empty-state"
+import { EditorSkeleton, ListSkeleton } from "@/components/skeletons"
 import {
   chartPath,
   ensureRange,
@@ -69,7 +72,8 @@ export default function ReviewNotes() {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState("")
-  const [error, setError] = useState("")
+  const [listLoading, setListLoading] = useState(true)
+  const [noteTick, setNoteTick] = useState(0)
   const [mobilePane, setMobilePane] = useState<MobilePane>("edit")
   const [dayMetrics, setDayMetrics] = useState<StrategyMetric[]>([])
   const hideTimer = useRef<number>(0)
@@ -84,9 +88,13 @@ export default function ReviewNotes() {
   }
 
   function refreshNotes() {
+    setListLoading(true)
     listNotes()
       .then(setNotes)
-      .catch(() => {})
+      .catch((err: unknown) => {
+        toastApiError(err, "加载复盘列表失败", () => refreshNotes())
+      })
+      .finally(() => setListLoading(false))
   }
 
   useEffect(() => {
@@ -96,7 +104,6 @@ export default function ReviewNotes() {
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    setError("")
     setMessage("")
     getNote(date)
       .then((note) => {
@@ -104,7 +111,7 @@ export default function ReviewNotes() {
       })
       .catch((err: unknown) => {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "加载失败")
+          toastApiError(err, "加载失败", () => setNoteTick((n) => n + 1))
           setContent("")
         }
       })
@@ -114,7 +121,7 @@ export default function ReviewNotes() {
     return () => {
       cancelled = true
     }
-  }, [date])
+  }, [date, noteTick])
 
   useEffect(() => {
     return () => {
@@ -157,7 +164,6 @@ export default function ReviewNotes() {
   }
 
   async function onSave() {
-    setError("")
     setMessage("")
     setSaving(true)
     try {
@@ -167,7 +173,7 @@ export default function ReviewNotes() {
       if (hideTimer.current) window.clearTimeout(hideTimer.current)
       hideTimer.current = window.setTimeout(() => setMessage(""), 2000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "保存失败")
+      toastApiError(err, "保存失败", () => void onSave())
     } finally {
       setSaving(false)
     }
@@ -179,6 +185,7 @@ export default function ReviewNotes() {
       selectedDate={date}
       onSelect={selectDate}
       onNew={onNewNote}
+      loading={listLoading}
     />
   )
 
@@ -253,10 +260,9 @@ export default function ReviewNotes() {
               <p className="text-sm text-muted-foreground">该日暂无指标，点击返回图表</p>
             )}
           </button>
-          {error ? <p className="mb-3 text-sm text-destructive">{error}</p> : null}
           {message ? <p className="mb-3 text-sm text-muted-foreground">{message}</p> : null}
           {loading ? (
-            <p className="text-sm text-muted-foreground">加载中...</p>
+            <EditorSkeleton />
           ) : (
             <>
               <div className="mb-3 grid grid-cols-3 gap-1 rounded-lg border p-1 md:hidden">
@@ -306,11 +312,13 @@ function NoteList({
   selectedDate,
   onSelect,
   onNew,
+  loading,
 }: {
   notes: ReviewNote[]
   selectedDate: string
   onSelect: (date: string) => void
   onNew: () => void
+  loading?: boolean
 }) {
   return (
     <div className="flex h-full min-h-[320px] flex-col md:min-h-[480px]">
@@ -322,8 +330,23 @@ function NoteList({
         </Button>
       </div>
       <ul className="flex-1 overflow-auto p-2">
-        {notes.length === 0 ? (
-          <li className="px-2 py-6 text-center text-sm text-muted-foreground">暂无复盘记录</li>
+        {loading ? (
+          <li>
+            <ListSkeleton rows={5} />
+          </li>
+        ) : notes.length === 0 ? (
+          <li>
+            <EmptyState
+              icon={NotebookPen}
+              title="暂无复盘记录"
+              description="点击新建，开始写下当日复盘。"
+              action={
+                <Button type="button" size="sm" onClick={onNew}>
+                  新建复盘
+                </Button>
+              }
+            />
+          </li>
         ) : (
           notes.map((n) => {
             const active = n.date === selectedDate

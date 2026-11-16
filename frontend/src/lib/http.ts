@@ -9,6 +9,55 @@ export class ApiError extends Error {
   }
 }
 
+export class ConnectionError extends Error {
+  constructor(message = "服务未连接") {
+    super(message)
+    this.name = "ConnectionError"
+  }
+}
+
+type ConnListener = (connected: boolean) => void
+
+let connected = true
+const connListeners = new Set<ConnListener>()
+
+export function subscribeConnection(fn: ConnListener): () => void {
+  connListeners.add(fn)
+  fn(connected)
+  return () => {
+    connListeners.delete(fn)
+  }
+}
+
+function setConnected(next: boolean) {
+  if (connected === next) return
+  connected = next
+  connListeners.forEach((fn) => fn(connected))
+}
+
+export function isConnectionError(err: unknown): boolean {
+  return err instanceof ConnectionError
+}
+
+const GATEWAY = new Set([502, 503, 504])
+
+export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  try {
+    const res = await fetch(input, init)
+    const ct = res.headers.get("content-type") ?? ""
+    if (GATEWAY.has(res.status) || (res.status >= 500 && !ct.includes("application/json"))) {
+      setConnected(false)
+      throw new ConnectionError()
+    }
+    setConnected(true)
+    return res
+  } catch (err) {
+    if (err instanceof ConnectionError) throw err
+    setConnected(false)
+    throw new ConnectionError()
+  }
+}
+
 export async function readError(res: Response): Promise<string> {
   try {
     const body = (await res.json()) as { error?: string }

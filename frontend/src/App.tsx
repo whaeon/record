@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { NavLink, Route, Routes } from "react-router-dom"
 import { ClipboardList, LineChart, Menu, NotebookPen } from "lucide-react"
+import { ConnectionBanner } from "@/components/connection-banner"
 import { ExportMenu } from "@/components/export-menu"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Toaster } from "@/components/ui/sonner"
@@ -101,6 +102,7 @@ function App() {
           </div>
         </SheetContent>
       </Sheet>
+      <ConnectionBanner />
       <main className="mx-auto max-w-6xl px-4 py-4 md:px-6 md:py-6">
         <Routes>
           <Route path="/" element={<MetricsEntry />} />

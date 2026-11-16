@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react"
-import { ChevronsUpDown } from "lucide-react"
+import { ChevronsUpDown, ClipboardList, History, Search } from "lucide-react"
 import { toast } from "sonner"
 import {
   createMetric,
@@ -20,7 +20,10 @@ import {
 } from "@/api/strategies"
 import { todayISO } from "@/lib/date"
 import { ApiError } from "@/lib/http"
+import { toastApiError } from "@/lib/notify"
 import { DatePicker } from "@/components/date-picker"
+import { EmptyState } from "@/components/empty-state"
+import { ListSkeleton } from "@/components/skeletons"
 import { TodayStats } from "@/components/today-stats"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -170,12 +173,17 @@ export default function MetricsEntry() {
     setStrategyId((prev) => (list.some((s) => s.id === prev && s.is_active) ? prev : 0))
   }
 
-  useEffect(() => {
+  function loadStrategies() {
+    setLoading(true)
     refreshStrategies()
       .catch((err: unknown) => {
-        toast.error(err instanceof Error ? err.message : "加载交易策略失败")
+        toastApiError(err, "加载交易策略失败", () => loadStrategies())
       })
       .finally(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    loadStrategies()
   }, [])
 
   async function onCreate(e: FormEvent) {
@@ -205,7 +213,7 @@ export default function MetricsEntry() {
       if (err instanceof ApiError && err.status === 409) {
         toast.error("交易策略名称已存在")
       } else {
-        toast.error(err instanceof Error ? err.message : "创建失败")
+        toastApiError(err, "创建失败", () => void onCreate(e))
       }
     } finally {
       setCreating(false)
@@ -250,7 +258,7 @@ export default function MetricsEntry() {
       if (err instanceof ApiError && err.status === 409) {
         toast.error("交易策略名称已存在")
       } else {
-        toast.error(err instanceof Error ? err.message : "保存失败")
+        toastApiError(err, "保存失败")
       }
     } finally {
       setSavingEdit(false)
@@ -265,7 +273,7 @@ export default function MetricsEntry() {
       const list = await listRevisions(s.id)
       setRevisions(list)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "加载改动记录失败")
+      toastApiError(err, "加载改动记录失败", () => void openHistory(s))
     } finally {
       setLoadingRevisions(false)
     }
@@ -280,7 +288,7 @@ export default function MetricsEntry() {
       setPendingDeactivate(null)
       await refreshStrategies()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "停用失败")
+      toastApiError(err, "停用失败")
     } finally {
       setToggling(false)
     }
@@ -293,7 +301,7 @@ export default function MetricsEntry() {
       toast.success("已启用交易策略")
       await refreshStrategies()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "启用失败")
+      toastApiError(err, "启用失败")
     } finally {
       setToggling(false)
     }
@@ -308,7 +316,7 @@ export default function MetricsEntry() {
       setPendingDelete(null)
       await refreshStrategies()
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "删除失败")
+      toastApiError(err, "删除失败")
     } finally {
       setDeleting(false)
     }
@@ -340,7 +348,7 @@ export default function MetricsEntry() {
       if (existing) {
         setConflict(existing)
       } else {
-        toast.error(err instanceof Error ? err.message : "提交失败")
+        toastApiError(err, "提交失败", () => void onSubmitMetric(e))
       }
     } finally {
       setSubmitting(false)
@@ -365,7 +373,7 @@ export default function MetricsEntry() {
       setStatsTick((n) => n + 1)
       toast.success("已更新")
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "更新失败")
+      toastApiError(err, "更新失败", () => void onConfirmUpdate())
     } finally {
       setUpdating(false)
     }
@@ -439,9 +447,7 @@ export default function MetricsEntry() {
           if (existing) {
             conflicts.push({ strategy: item.strategy, existing, payload: item.payload })
           } else {
-            toast.error(
-              `${item.strategy.name}：${err instanceof Error ? err.message : "提交失败"}`
-            )
+            toastApiError(err, `${item.strategy.name}：提交失败`, () => void onSubmitBatch())
             return
           }
         }
@@ -472,9 +478,7 @@ export default function MetricsEntry() {
           updated += 1
           updatedIds.push(item.strategy.id)
         } catch (err) {
-          toast.error(
-            `${item.strategy.name}：${err instanceof Error ? err.message : "更新失败"}`
-          )
+          toastApiError(err, `${item.strategy.name}：更新失败`, () => void onConfirmBatchUpdate())
           clearBatchRows(updatedIds)
           return
         }
@@ -526,9 +530,13 @@ export default function MetricsEntry() {
           <div className="grid gap-3">
             <h3 className="text-sm font-medium">已有交易策略</h3>
             {loading ? (
-              <p className="text-sm text-muted-foreground">加载中...</p>
+              <ListSkeleton />
             ) : empty ? (
-              <p className="text-sm text-muted-foreground">暂无交易策略</p>
+              <EmptyState
+                icon={ClipboardList}
+                title="暂无交易策略"
+                description="先创建一个交易策略，再录入每日指标。"
+              />
             ) : (
               <>
                 <div className="grid gap-2">
@@ -541,7 +549,11 @@ export default function MetricsEntry() {
                   />
                 </div>
                 {filteredStrategies.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">未找到匹配的交易策略</p>
+                  <EmptyState
+                    icon={Search}
+                    title="未找到匹配的交易策略"
+                    description="换个关键词试试，或清空搜索查看全部。"
+                  />
                 ) : (
                   <ul className="grid gap-3">
                     {filteredStrategies.map((s) => (
@@ -614,14 +626,16 @@ export default function MetricsEntry() {
         </CardHeader>
         <CardContent className="grid gap-4">
           {noActive ? (
-            <div className="grid gap-3">
-              <p className="text-sm text-muted-foreground">
-                {empty ? "请先创建交易策略" : "请先启用交易策略"}
-              </p>
-              <Button type="button" onClick={jumpToCreate}>
-                {empty ? "去创建交易策略" : "去管理交易策略"}
-              </Button>
-            </div>
+            <EmptyState
+              icon={ClipboardList}
+              title={empty ? "请先创建交易策略" : "请先启用交易策略"}
+              description={empty ? "创建后即可批量录入指标。" : "启用至少一个策略后再批量录入。"}
+              action={
+                <Button type="button" onClick={jumpToCreate}>
+                  {empty ? "去创建交易策略" : "去管理交易策略"}
+                </Button>
+              }
+            />
           ) : (
             <>
               <div className="grid gap-2">
@@ -744,12 +758,16 @@ export default function MetricsEntry() {
         <CardContent>
           {noActive ? (
             <div className="grid gap-3">
-              <p className="text-sm text-muted-foreground">
-                {empty ? "请先创建交易策略" : "请先启用交易策略"}
-              </p>
-              <Button type="button" onClick={jumpToCreate}>
-                {empty ? "去创建交易策略" : "去管理交易策略"}
-              </Button>
+              <EmptyState
+                icon={ClipboardList}
+                title={empty ? "请先创建交易策略" : "请先启用交易策略"}
+                description={empty ? "创建后即可录入每日指标。" : "启用至少一个策略后再录入。"}
+                action={
+                  <Button type="button" onClick={jumpToCreate}>
+                    {empty ? "去创建交易策略" : "去管理交易策略"}
+                  </Button>
+                }
+              />
               <fieldset disabled className="grid gap-4 opacity-50">
                 <MetricFields
                   date={date}
@@ -1005,9 +1023,9 @@ export default function MetricsEntry() {
             </DialogTitle>
           </DialogHeader>
           {loadingRevisions ? (
-            <p className="text-sm text-muted-foreground">加载中...</p>
+            <ListSkeleton rows={3} />
           ) : revisions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">暂无改动记录</p>
+            <EmptyState icon={History} title="暂无改动记录" description="修改策略内容后会在此留下版本。" />
           ) : (
             <ol className="relative grid max-h-[60vh] gap-4 overflow-auto border-l pl-4">
               {revisions.map((rev) => (

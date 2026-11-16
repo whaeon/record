@@ -1,5 +1,4 @@
 import { Download } from "lucide-react"
-import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -7,10 +6,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { ApiError, readError } from "@/lib/http"
+import { ApiError, apiFetch, readError } from "@/lib/http"
+import { toastApiError } from "@/lib/notify"
 
 async function download(path: string, fallbackName: string) {
-  const res = await fetch(path)
+  const res = await apiFetch(path)
   if (!res.ok) {
     throw new ApiError(res.status, await readError(res))
   }
@@ -30,7 +30,7 @@ export function ExportMenu() {
     try {
       await download(path, name)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "导出失败")
+      toastApiError(err, "导出失败", () => void onExport(path, name))
     }
   }
 

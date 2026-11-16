@@ -10,11 +10,13 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
-import { ChevronsUpDown } from "lucide-react"
+import { ChevronsUpDown, LineChart as LineChartIcon } from "lucide-react"
 import { listMetricDates, listMetrics, type StrategyMetric } from "@/api/metrics"
 import { listNotes } from "@/api/notes"
 import { listStrategies, type Strategy } from "@/api/strategies"
 import { DatePicker } from "@/components/date-picker"
+import { EmptyState } from "@/components/empty-state"
+import { ChartSkeleton, ListSkeleton } from "@/components/skeletons"
 import {
   formatPercent,
   lastNTradingDays,
@@ -29,6 +31,7 @@ import {
   strategyQuery,
   type StrategyFilter,
 } from "@/lib/nav"
+import { toastApiError } from "@/lib/notify"
 import {
   ChartContainer,
   ChartLegend,
@@ -119,11 +122,11 @@ export default function MetricsChart() {
   const [strategies, setStrategies] = useState<Strategy[]>([])
   const [rows, setRows] = useState<StrategyMetric[]>([])
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
   const [pickerOpen, setPickerOpen] = useState(false)
   const [existingDates, setExistingDates] = useState<string[]>([])
   const [noteDates, setNoteDates] = useState<Set<string>>(new Set())
   const [pendingDate, setPendingDate] = useState<string | null>(null)
+  const [reloadTick, setReloadTick] = useState(0)
   const [sealThreshold, setSealThreshold] = useState(loadSealThreshold)
   const [thresholdDraft, setThresholdDraft] = useState(String(loadSealThreshold()))
   const isMobile = useMediaQuery("(max-width: 767px)")
@@ -191,7 +194,6 @@ export default function MetricsChart() {
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    setError("")
     listMetrics({
       from,
       to,
@@ -202,7 +204,7 @@ export default function MetricsChart() {
       })
       .catch((err: unknown) => {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "查询失败")
+          toastApiError(err, "查询失败", () => setReloadTick((n) => n + 1))
           setRows([])
         }
       })
@@ -212,7 +214,7 @@ export default function MetricsChart() {
     return () => {
       cancelled = true
     }
-  }, [from, to, strategyId])
+  }, [from, to, strategyId, reloadTick])
 
   const chartData = useMemo<ChartRow[]>(
     () =>
@@ -376,11 +378,19 @@ export default function MetricsChart() {
           </CardAction>
         </CardHeader>
         <CardContent>
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
           {loading ? (
-            <p className="text-sm text-muted-foreground">加载中...</p>
+            <ChartSkeleton />
           ) : chartData.length === 0 ? (
-            <p className="text-sm text-muted-foreground">暂无指标数据，请先在交易策略页录入</p>
+            <EmptyState
+              icon={LineChartIcon}
+              title="暂无指标数据"
+              description="请先在交易策略页录入每日指标，再查看走势。"
+              action={
+                <Button type="button" onClick={() => navigate("/")}>
+                  去录入
+                </Button>
+              }
+            />
           ) : (
             <ChartContainer config={chartConfig} className="aspect-auto h-[280px] w-full md:h-[360px]">
               <LineChart
@@ -519,8 +529,14 @@ export default function MetricsChart() {
           <CardTitle>每日明细</CardTitle>
         </CardHeader>
         <CardContent>
-          {rows.length === 0 ? (
-            <p className="text-sm text-muted-foreground">暂无指标数据</p>
+          {loading ? (
+            <ListSkeleton />
+          ) : rows.length === 0 ? (
+            <EmptyState
+              icon={LineChartIcon}
+              title="暂无指标数据"
+              description="录入指标后，这里会列出每日明细。"
+            />
           ) : (
             <>
               <ul className="grid gap-3 md:hidden">

@@ -1,4 +1,4 @@
-import { ApiError, parseJson } from "@/lib/http"
+import { ApiError, apiFetch, parseJson } from "@/lib/http"
 
 export type StrategyMetric = {
   id: number
@@ -21,7 +21,7 @@ export type CreateMetricInput = {
 }
 
 export async function listMetricDates(): Promise<string[]> {
-  const res = await fetch("/api/metrics/dates")
+  const res = await apiFetch("/api/metrics/dates")
   return parseJson<string[]>(res)
 }
 
@@ -35,12 +35,12 @@ export async function listMetrics(params?: {
   if (params?.to) q.set("to", params.to)
   if (params?.strategy_id !== undefined) q.set("strategy_id", String(params.strategy_id))
   const qs = q.toString()
-  const res = await fetch(qs ? `/api/metrics?${qs}` : "/api/metrics")
+  const res = await apiFetch(qs ? `/api/metrics?${qs}` : "/api/metrics")
   return parseJson<StrategyMetric[]>(res)
 }
 
 export async function createMetric(input: CreateMetricInput): Promise<StrategyMetric> {
-  const res = await fetch("/api/metrics", {
+  const res = await apiFetch("/api/metrics", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
@@ -52,7 +52,7 @@ export async function updateMetric(
   id: number,
   input: CreateMetricInput
 ): Promise<StrategyMetric> {
-  const res = await fetch(`/api/metrics/${id}`, {
+  const res = await apiFetch(`/api/metrics/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),

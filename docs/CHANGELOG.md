@@ -6,6 +6,7 @@
 
 ## 2026-11
 
+- 2026-11-16 ｜ T-25：空状态 / 加载 / 错误处理统一 ｜ frontend/src/{App.tsx,api,lib/http.ts,lib/notify.ts,components/{empty-state,skeletons,connection-banner,ui/empty,ui/skeleton},pages} ｜ 验收通过 ｜ 无 ｜ 无 API 路径/参数变更、无数据结构变更
 - 2026-11-16 ｜ T-24：图表可读性强化 ｜ frontend/src/pages/MetricsChart.tsx ｜ 验收通过 ｜ 无 ｜ 无 API 路径/参数变更、无数据结构变更
 - 2026-11-16 ｜ T-23：首屏核心指标条 ｜ frontend/src/{components/today-stats.tsx,pages/MetricsEntry.tsx,lib/date.ts} ｜ 验收通过 ｜ 基础交易日历为周一至周五，不含节假日 ｜ 无 API 路径/参数变更、无数据结构变更
 - 2026-11-16 ｜ T-22：策略启用/停用 + 列表搜索 ｜ internal/{db/schema.sql,model,repository,service,handler}、frontend/src/{api/strategies.ts,pages/MetricsEntry.tsx,pages/MetricsChart.tsx}、docs/SPEC.md ｜ 验收通过 ｜ 无 ｜ strategies 增加 is_active；新增 PUT /api/strategies/:id/active
