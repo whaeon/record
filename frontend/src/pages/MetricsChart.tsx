@@ -15,7 +15,13 @@ import { listNotes } from "@/api/notes"
 import { listStrategies, type Strategy } from "@/api/strategies"
 import { DatePicker } from "@/components/date-picker"
 import { daysAgoISO, formatPercent, todayISO } from "@/lib/date"
-import { notesPath, parseDateParam, parseStrategyParam } from "@/lib/nav"
+import {
+  notesPath,
+  parseDateParam,
+  parseStrategyParam,
+  strategyQuery,
+  type StrategyFilter,
+} from "@/lib/nav"
 import {
   ChartContainer,
   ChartLegend,
@@ -86,12 +92,11 @@ export default function MetricsChart() {
   const [pendingDate, setPendingDate] = useState<string | null>(null)
   const isMobile = useMediaQuery("(max-width: 767px)")
 
-  function patchParams(next: { from?: string; to?: string; strategy_id?: number; date?: string | null }) {
+  function patchParams(next: { from?: string; to?: string; strategy_id?: StrategyFilter; date?: string | null }) {
     const q = new URLSearchParams()
     q.set("from", next.from ?? from)
     q.set("to", next.to ?? to)
-    const sid = next.strategy_id ?? strategyId
-    if (sid > 0) q.set("strategy_id", String(sid))
+    q.set("strategy_id", strategyQuery(next.strategy_id ?? strategyId))
     const d = next.date === undefined ? focusDate : next.date
     if (d) q.set("date", d)
     setSearchParams(q, { replace: true })
@@ -121,7 +126,7 @@ export default function MetricsChart() {
     listMetrics({
       from,
       to,
-      strategy_id: strategyId > 0 ? strategyId : undefined,
+      strategy_id: strategyId,
     })
       .then((list) => {
         if (!cancelled) setRows(list)
@@ -204,7 +209,7 @@ export default function MetricsChart() {
                     aria-expanded={pickerOpen}
                     className="w-full justify-between font-normal"
                   >
-                    {selected ? selected.name : "全部交易策略"}
+                    {selected ? selected.name : "全部策略"}
                     <ChevronsUpDown className="size-4 opacity-50" />
                   </Button>
                 </PopoverTrigger>
@@ -215,14 +220,14 @@ export default function MetricsChart() {
                       <CommandEmpty>未找到交易策略</CommandEmpty>
                       <CommandGroup>
                         <CommandItem
-                          value="全部交易策略"
-                          data-checked={strategyId === 0 || undefined}
+                          value="全部策略"
+                          data-checked={strategyId === "all" || undefined}
                           onSelect={() => {
-                            patchParams({ strategy_id: 0 })
+                            patchParams({ strategy_id: "all" })
                             setPickerOpen(false)
                           }}
                         >
-                          全部交易策略
+                          全部策略
                         </CommandItem>
                         {strategies.map((s) => (
                           <CommandItem
@@ -370,7 +375,7 @@ export default function MetricsChart() {
               <ul className="grid gap-3 md:hidden">
                 {rows.map((row) => (
                   <li
-                    key={row.id}
+                        key={`${row.date}-${row.strategy_id}-${row.id}`}
                     className={[
                       "grid gap-2 rounded-lg border p-3",
                       row.date === focusDate ? "border-ring bg-muted/40" : "",
@@ -429,7 +434,7 @@ export default function MetricsChart() {
                   <TableBody>
                     {rows.map((row) => (
                       <TableRow
-                        key={row.id}
+                    key={`${row.date}-${row.strategy_id}-${row.id}`}
                         className="cursor-pointer"
                         data-state={row.date === focusDate ? "selected" : undefined}
                         onClick={() => goToNote(row.date)}

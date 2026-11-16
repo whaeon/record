@@ -273,9 +273,20 @@ func (s *Service) ListMetrics(ctx context.Context, from, to, strategyIDRaw strin
 			return nil, err
 		}
 	}
+	raw := strings.TrimSpace(strategyIDRaw)
+	if raw == "all" {
+		list, err := s.metrics.ListAggregatedByDate(ctx, from, to)
+		if err != nil {
+			return nil, err
+		}
+		for i := range list {
+			applyRates(&list[i])
+		}
+		return list, nil
+	}
 	var strategyID int64
-	if strings.TrimSpace(strategyIDRaw) != "" {
-		id, err := strconv.ParseInt(strategyIDRaw, 10, 64)
+	if raw != "" {
+		id, err := strconv.ParseInt(raw, 10, 64)
 		if err != nil || id <= 0 {
 			return nil, ErrInvalidID
 		}

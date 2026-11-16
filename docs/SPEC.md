@@ -136,7 +136,7 @@ src/pages, src/components, src/api
 - GET    /api/strategies/:id/revisions ［待实现］　changed_at 倒序
 
 ### 指标
-- GET  /api/metrics?from=&to=&strategy_id= ［待实现］　返回体含 seal_rate、break_rate、strategy_name（JOIN 当前名）、source
+- GET  /api/metrics?from=&to=&strategy_id= ［已实现］　strategy_id=all 按日聚合三列求和并重算 seal_rate/break_rate；省略或数字为单策略/未筛选明细；返回体含 seal_rate、break_rate、strategy_name（JOIN 当前名）
 - POST /api/metrics ［待实现］　date+strategy_id 冲突 409 + 已有记录体（含 id）
 - PUT  /api/metrics/:id ［待实现］
 - GET  /api/metrics/dates ［待实现］　已有指标日期，升序去重

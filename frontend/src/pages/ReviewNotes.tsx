@@ -6,7 +6,13 @@ import { Plus } from "lucide-react"
 import { listMetrics, type StrategyMetric } from "@/api/metrics"
 import { getNote, listNotes, saveNote, type ReviewNote } from "@/api/notes"
 import { daysAgoISO, formatPercent, todayISO } from "@/lib/date"
-import { chartPath, ensureRange, parseDateParam, parseStrategyParam } from "@/lib/nav"
+import {
+  chartPath,
+  ensureRange,
+  parseDateParam,
+  parseStrategyParam,
+  strategyQuery,
+} from "@/lib/nav"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
@@ -73,8 +79,7 @@ export default function ReviewNotes() {
     q.set("date", next)
     q.set("from", from)
     q.set("to", to)
-    if (strategyId > 0) q.set("strategy_id", String(strategyId))
-    else q.delete("strategy_id")
+    q.set("strategy_id", strategyQuery(strategyId))
     setSearchParams(q, { replace: true })
   }
 
@@ -122,7 +127,7 @@ export default function ReviewNotes() {
     listMetrics({
       from: date,
       to: date,
-      strategy_id: strategyId > 0 ? strategyId : undefined,
+      strategy_id: strategyId,
     })
       .then((list) => {
         if (!cancelled) setDayMetrics(list)

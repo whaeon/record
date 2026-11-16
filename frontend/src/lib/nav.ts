@@ -5,17 +5,23 @@ export function parseDateParam(raw: string | null): string | null {
   return raw
 }
 
-export function parseStrategyParam(raw: string | null): number {
-  if (!raw) return 0
+export type StrategyFilter = "all" | number
+
+export function parseStrategyParam(raw: string | null): StrategyFilter {
+  if (!raw || raw === "all") return "all"
   const n = Number(raw)
-  if (!Number.isInteger(n) || n <= 0) return 0
+  if (!Number.isInteger(n) || n <= 0) return "all"
   return n
+}
+
+export function strategyQuery(id: StrategyFilter): string {
+  return id === "all" ? "all" : String(id)
 }
 
 export type ChartLinkParams = {
   from: string
   to: string
-  strategy_id: number
+  strategy_id: StrategyFilter
   date?: string
 }
 
@@ -23,7 +29,7 @@ export function chartPath(p: ChartLinkParams): string {
   const q = new URLSearchParams()
   q.set("from", p.from)
   q.set("to", p.to)
-  if (p.strategy_id > 0) q.set("strategy_id", String(p.strategy_id))
+  q.set("strategy_id", strategyQuery(p.strategy_id))
   if (p.date) q.set("date", p.date)
   return `/chart?${q.toString()}`
 }
@@ -32,13 +38,13 @@ export function notesPath(p: {
   date: string
   from: string
   to: string
-  strategy_id: number
+  strategy_id: StrategyFilter
 }): string {
   const q = new URLSearchParams()
   q.set("date", p.date)
   q.set("from", p.from)
   q.set("to", p.to)
-  if (p.strategy_id > 0) q.set("strategy_id", String(p.strategy_id))
+  q.set("strategy_id", strategyQuery(p.strategy_id))
   return `/notes?${q.toString()}`
 }
 

@@ -276,6 +276,41 @@ func (r *MetricRepository) List(ctx context.Context, from, to string, strategyID
 	return list, rows.Err()
 }
 
+func (r *MetricRepository) ListAggregatedByDate(ctx context.Context, from, to string) ([]model.StrategyMetric, error) {
+	query := `SELECT m.date,
+		SUM(m.total_picks),
+		SUM(m.limit_up_count),
+		SUM(m.failed_limit_count)
+		FROM strategy_metrics m WHERE TRUE`
+	args := make([]any, 0, 2)
+	if from != "" {
+		args = append(args, from)
+		query += fmt.Sprintf(` AND m.date >= $%d`, len(args))
+	}
+	if to != "" {
+		args = append(args, to)
+		query += fmt.Sprintf(` AND m.date <= $%d`, len(args))
+	}
+	query += ` GROUP BY m.date ORDER BY m.date ASC`
+
+	rows, err := q(ctx, r.db).QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	list := make([]model.StrategyMetric, 0)
+	for rows.Next() {
+		var m model.StrategyMetric
+		if err := rows.Scan(&m.Date, &m.TotalPicks, &m.LimitUpCount, &m.FailedLimitCount); err != nil {
+			return nil, err
+		}
+		m.StrategyName = "全部策略"
+		list = append(list, m)
+	}
+	return list, rows.Err()
+}
+
 func (r *MetricRepository) ListDates(ctx context.Context) ([]string, error) {
 	rows, err := q(ctx, r.db).QueryContext(ctx, `SELECT DISTINCT date FROM strategy_metrics ORDER BY date ASC`)
 	if err != nil {
