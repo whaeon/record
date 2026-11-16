@@ -16,13 +16,16 @@ import { listNotes } from "@/api/notes"
 import { listStrategies, type Strategy } from "@/api/strategies"
 import { DatePicker } from "@/components/date-picker"
 import { EmptyState } from "@/components/empty-state"
-import { ChartSkeleton, ListSkeleton } from "@/components/skeletons"
+import { MetricsEntryDialog } from "@/components/metrics-entry-dialog"
+import { ChartSkeleton } from "@/components/skeletons"
 import { SourceBadge, SourceHint } from "@/components/source-badge"
+import { StrategyManageDialog } from "@/components/strategy-manage-dialog"
+import { TodayStats } from "@/components/today-stats"
 import {
-  formatPercent,
   lastNTradingDays,
   matchRangePreset,
   thisMonthTradingRange,
+  todayISO,
   type RangePreset,
 } from "@/lib/date"
 import {
@@ -52,14 +55,6 @@ import {
   CommandList,
 } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -131,6 +126,23 @@ export default function MetricsChart() {
   const [sealThreshold, setSealThreshold] = useState(loadSealThreshold)
   const [thresholdDraft, setThresholdDraft] = useState(String(loadSealThreshold()))
   const isMobile = useMediaQuery("(max-width: 767px)")
+  const [entryOpen, setEntryOpen] = useState(false)
+  const [entryDate, setEntryDate] = useState(todayISO())
+  const [manageOpen, setManageOpen] = useState(false)
+  const [statsTick, setStatsTick] = useState(0)
+
+  function openEntry(date?: string) {
+    setEntryDate(date ?? focusDate ?? todayISO())
+    setEntryOpen(true)
+  }
+
+  function onMetricsSaved() {
+    setStatsTick((n) => n + 1)
+    setReloadTick((n) => n + 1)
+    listMetricDates()
+      .then(setExistingDates)
+      .catch(() => {})
+  }
 
   function applySealThreshold(raw: string) {
     const next = clampThreshold(Number(raw))
@@ -244,9 +256,20 @@ export default function MetricsChart() {
 
   return (
     <div className="grid gap-6">
+      <TodayStats refreshToken={statsTick} onEntryClick={() => openEntry()} />
       <Card>
         <CardHeader>
           <CardTitle>筛选</CardTitle>
+          <CardAction>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <Button type="button" size="sm" onClick={() => openEntry()}>
+                录入
+              </Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => setManageOpen(true)}>
+                管理交易策略
+              </Button>
+            </div>
+          </CardAction>
         </CardHeader>
         <CardContent>
           <div className="mb-4 flex flex-wrap gap-2">
@@ -385,9 +408,9 @@ export default function MetricsChart() {
             <EmptyState
               icon={LineChartIcon}
               title="暂无指标数据"
-              description="请先在交易策略页录入每日指标，再查看走势。"
+              description="请先录入每日指标，再查看走势。"
               action={
-                <Button type="button" onClick={() => navigate("/")}>
+                <Button type="button" onClick={() => openEntry()}>
                   去录入
                 </Button>
               }
@@ -525,110 +548,23 @@ export default function MetricsChart() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>每日明细</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <ListSkeleton />
-          ) : rows.length === 0 ? (
-            <EmptyState
-              icon={LineChartIcon}
-              title="暂无指标数据"
-              description="录入指标后，这里会列出每日明细。"
-            />
-          ) : (
-            <>
-              <ul className="grid gap-3 md:hidden">
-                {rows.map((row) => (
-                  <li
-                        key={`${row.date}-${row.strategy_id}-${row.id}`}
-                    className={[
-                      "grid gap-2 rounded-lg border p-3",
-                      row.date === focusDate ? "border-ring bg-muted/40" : "",
-                    ].join(" ")}
-                  >
-                    <div className="flex items-baseline justify-between gap-2">
-                      <button
-                        type="button"
-                        className="inline-flex min-h-11 items-center gap-1.5 font-medium underline-offset-4 hover:underline"
-                        onClick={() => goToNote(row.date)}
-                      >
-                        {row.date}
-                        <SourceBadge source={row.source} />
-                      </button>
-                      <span className="truncate text-sm text-muted-foreground">
-                        {row.strategy_name}
-                      </span>
-                    </div>
-                    <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
-                      <div className="flex justify-between gap-2">
-                        <dt className="text-muted-foreground">筛出</dt>
-                        <dd className="tabular-nums">{row.total_picks}</dd>
-                      </div>
-                      <div className="flex justify-between gap-2">
-                        <dt className="text-muted-foreground">涨停</dt>
-                        <dd className="tabular-nums">{row.limit_up_count}</dd>
-                      </div>
-                      <div className="flex justify-between gap-2">
-                        <dt className="text-muted-foreground">炸板</dt>
-                        <dd className="tabular-nums">{row.failed_limit_count}</dd>
-                      </div>
-                      <div className="flex justify-between gap-2">
-                        <dt className="text-muted-foreground">封板率</dt>
-                        <dd className="tabular-nums">{formatPercent(row.seal_rate)}</dd>
-                      </div>
-                      <div className="col-span-2 flex justify-between gap-2">
-                        <dt className="text-muted-foreground">炸板率</dt>
-                        <dd className="tabular-nums">{formatPercent(row.break_rate)}</dd>
-                      </div>
-                    </dl>
-                  </li>
-                ))}
-              </ul>
-              <div className="hidden md:block">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>日期</TableHead>
-                      <TableHead>交易策略</TableHead>
-                      <TableHead className="text-right">筛出票数</TableHead>
-                      <TableHead className="text-right">涨停数</TableHead>
-                      <TableHead className="text-right">炸板数</TableHead>
-                      <TableHead className="text-right">封板率</TableHead>
-                      <TableHead className="text-right">炸板率</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {rows.map((row) => (
-                      <TableRow
-                    key={`${row.date}-${row.strategy_id}-${row.id}`}
-                        className="cursor-pointer"
-                        data-state={row.date === focusDate ? "selected" : undefined}
-                        onClick={() => goToNote(row.date)}
-                      >
-                        <TableCell>
-                          <span className="inline-flex items-center gap-1.5">
-                            {row.date}
-                            <SourceBadge source={row.source} />
-                          </span>
-                        </TableCell>
-                        <TableCell>{row.strategy_name}</TableCell>
-                        <TableCell className="text-right">{row.total_picks}</TableCell>
-                        <TableCell className="text-right">{row.limit_up_count}</TableCell>
-                        <TableCell className="text-right">{row.failed_limit_count}</TableCell>
-                        <TableCell className="text-right">{formatPercent(row.seal_rate)}</TableCell>
-                        <TableCell className="text-right">{formatPercent(row.break_rate)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+      <MetricsEntryDialog
+        open={entryOpen}
+        onOpenChange={setEntryOpen}
+        date={entryDate}
+        onSaved={onMetricsSaved}
+        onNeedStrategies={() => setManageOpen(true)}
+      />
+      <StrategyManageDialog
+        open={manageOpen}
+        onOpenChange={setManageOpen}
+        onChanged={() => {
+          listStrategies()
+            .then(setStrategies)
+            .catch(() => {})
+          setReloadTick((n) => n + 1)
+        }}
+      />
 
       <AlertDialog open={pendingDate !== null} onOpenChange={(open) => !open && setPendingDate(null)}>
         <AlertDialogContent>

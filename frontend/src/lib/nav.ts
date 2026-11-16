@@ -31,7 +31,7 @@ export function chartPath(p: ChartLinkParams): string {
   q.set("to", p.to)
   q.set("strategy_id", strategyQuery(p.strategy_id))
   if (p.date) q.set("date", p.date)
-  return `/chart?${q.toString()}`
+  return `/?${q.toString()}`
 }
 
 export function notesPath(p: {

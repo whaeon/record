@@ -50,11 +50,13 @@ function StatCell({
   )
 }
 
-function jumpToEntry() {
-  document.getElementById("metric-entry")?.scrollIntoView({ behavior: "smooth", block: "start" })
-}
-
-export function TodayStats({ refreshToken = 0 }: { refreshToken?: number }) {
+export function TodayStats({
+  refreshToken = 0,
+  onEntryClick,
+}: {
+  refreshToken?: number
+  onEntryClick?: () => void
+}) {
   const today = todayISO()
   const prevDay = previousTradingDay(today)
   const [todayRow, setTodayRow] = useState<StrategyMetric | null>(null)
@@ -104,9 +106,11 @@ export function TodayStats({ refreshToken = 0 }: { refreshToken?: number }) {
             title="今日暂无数据"
             description="录入今日指标后，这里会显示命中数、涨停数与封板率。"
             action={
-              <Button type="button" size="sm" onClick={jumpToEntry}>
-                去录入
-              </Button>
+              onEntryClick ? (
+                <Button type="button" size="sm" onClick={onEntryClick}>
+                  去录入
+                </Button>
+              ) : undefined
             }
           />
         </CardContent>

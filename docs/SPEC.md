@@ -36,10 +36,9 @@ Windows 本地、当前单用户、非公网部署。当前为 Docker Compose �
 Echo / Ent / MongoDB / Ant Design / MUI / Chakra / 任何 WYSIWYG 富文本编辑器（TipTap / Lexical / Milkdown / ProseMirror）。
 
 ## 模块划分
-1. 交易策略管理：策略实体（可改名）+ 内容改动记录
-2. 指标录入与历史图表：按策略+日期录入指标，双 Y 轴折线图
-3. 复盘记录：按日期的 Markdown 编辑与预览，左侧记录列表
-4. 全局：三主题切换（跟随系统/黑夜/白天，默认跟随系统）
+1. 策略回顾：今日指标条 + 历史图表工作台；指标录入与策略 CRUD 为页内弹窗，无独立策略页、无每日明细表
+2. 复盘记录：按日期的 Markdown 编辑与预览，左侧记录列表
+3. 全局：三主题切换（跟随系统/黑夜/白天，默认跟随系统）；导航两项：策略回顾 / 复盘记录
 
 ## 后端分层
 handler（路由与参数校验） / service（业务与计算） / repository（数据访问）

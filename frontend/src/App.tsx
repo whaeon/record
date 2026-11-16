@@ -1,6 +1,6 @@
 import { useState } from "react"
-import { NavLink, Route, Routes } from "react-router-dom"
-import { ClipboardList, LineChart, Menu, NotebookPen } from "lucide-react"
+import { NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom"
+import { LineChart, Menu, NotebookPen } from "lucide-react"
 import { ConnectionBanner } from "@/components/connection-banner"
 import { ExportMenu } from "@/components/export-menu"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -12,15 +12,18 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
-import MetricsEntry from "@/pages/MetricsEntry"
 import MetricsChart from "@/pages/MetricsChart"
 import ReviewNotes from "@/pages/ReviewNotes"
 
 const navItems = [
-  { to: "/", label: "交易策略", icon: ClipboardList, end: true },
-  { to: "/chart", label: "历史图表", icon: LineChart, end: false },
+  { to: "/", label: "策略回顾", icon: LineChart, end: true },
   { to: "/notes", label: "复盘记录", icon: NotebookPen, end: false },
 ] as const
+
+function ChartRedirect() {
+  const { search } = useLocation()
+  return <Navigate to={{ pathname: "/", search }} replace />
+}
 
 function App() {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -105,8 +108,8 @@ function App() {
       <ConnectionBanner />
       <main className="mx-auto max-w-6xl px-4 py-4 md:px-6 md:py-6">
         <Routes>
-          <Route path="/" element={<MetricsEntry />} />
-          <Route path="/chart" element={<MetricsChart />} />
+          <Route path="/" element={<MetricsChart />} />
+          <Route path="/chart" element={<ChartRedirect />} />
           <Route path="/notes" element={<ReviewNotes />} />
         </Routes>
       </main>
