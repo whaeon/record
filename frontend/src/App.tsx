@@ -29,8 +29,8 @@ function App() {
   const [menuOpen, setMenuOpen] = useState(false)
 
   return (
-    <div className="min-h-svh overflow-x-hidden bg-background text-foreground">
-      <header className="border-b bg-background">
+    <div className="flex h-dvh flex-col overflow-hidden bg-background text-foreground">
+      <header className="shrink-0 border-b bg-background">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 md:grid md:grid-cols-3 md:px-6">
           <span className="justify-self-start font-medium">交易复盘</span>
           <nav className="hidden items-center justify-center gap-6 text-sm md:flex">
@@ -106,12 +106,14 @@ function App() {
         </SheetContent>
       </Sheet>
       <ConnectionBanner />
-      <main className="mx-auto max-w-6xl px-4 py-3 md:px-6 md:py-4">
-        <Routes>
-          <Route path="/" element={<MetricsChart />} />
-          <Route path="/chart" element={<ChartRedirect />} />
-          <Route path="/notes" element={<ReviewNotes />} />
-        </Routes>
+      <main className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col overflow-hidden px-4 py-3 md:px-6 md:py-4">
+        <div className="flex min-h-0 flex-1 flex-col">
+          <Routes>
+            <Route path="/" element={<MetricsChart />} />
+            <Route path="/chart" element={<ChartRedirect />} />
+            <Route path="/notes" element={<ReviewNotes />} />
+          </Routes>
+        </div>
       </main>
       <Toaster />
     </div>

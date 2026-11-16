@@ -6,6 +6,7 @@
 
 ## 2026-11
 
+- 2026-11-16 ｜ T-29：策略×指标分组小图 ｜ frontend/src/{pages/MetricsChart.tsx,components/date-picker.tsx,App.tsx,index.css,pages/ReviewNotes.tsx} ｜ 验收通过 ｜ 无 ｜ 无 API 路径/参数变更、无数据结构变更
 - 2026-11-16 ｜ T-28：合并为策略回顾 ｜ frontend/src/{App.tsx,lib/nav.ts,pages/MetricsChart.tsx,pages/MetricsEntry.tsx,components/{today-stats,metrics-entry-dialog,strategy-manage-dialog}.tsx}、docs/SPEC.md ｜ 验收通过 ｜ 无 ｜ 无 API 路径/参数变更；模块划分改为策略回顾 + 复盘记录两导航；录入与策略 CRUD 改为页内弹窗；删除每日明细与独立 MetricsEntry 页
 - 2026-11-16 ｜ T-27：删除/弃用代码必须清掉 ｜ docs/WORKFLOW.md ｜ 验收通过 ｜ 无 ｜ 无契约变更；编码规范新增：被替换实现须同一任务内删除
 - 2026-11-16 ｜ T-26：source 字段前端展示 ｜ frontend/src/{api/metrics.ts,components/source-badge.tsx,pages/MetricsChart.tsx,pages/MetricsEntry.tsx}、internal/{db/schema.sql,model,repository}、docs/SPEC.md ｜ 验收通过 ｜ 无 ｜ GET /api/metrics 返回 source；strategy_id=all 当日任一条 auto 则聚合 source=auto

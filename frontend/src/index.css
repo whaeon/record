@@ -124,10 +124,15 @@
   * {
     @apply border-border outline-ring/50;
     }
+  html,
+  body,
+  #root {
+    @apply h-dvh overflow-hidden;
+    }
   body {
-    @apply bg-background text-foreground overflow-x-hidden;
+    @apply bg-background text-foreground;
     }
   html {
-    @apply font-sans overflow-x-hidden;
+    @apply font-sans;
     }
 }

@@ -138,6 +138,12 @@ function saveSelectedMetrics(keys: MetricKey[]) {
   }
 }
 
+function compactDateLabel(iso: string, peer: string): string {
+  if (!iso) return "日期"
+  if (iso.slice(0, 4) !== peer.slice(0, 4)) return iso
+  return iso.slice(5)
+}
+
 type ChartRow = {
   date: string
   source?: string
@@ -352,42 +358,59 @@ export default function MetricsChart() {
         : `${selectedMetrics.length} 项指标`
 
   return (
-    <div className="grid gap-3">
-      <TodayStats refreshToken={statsTick} onEntryClick={() => openEntry()} />
-      <Card size="sm">
+    <div className="flex min-h-0 flex-1 flex-col gap-3">
+      <div className="shrink-0">
+        <TodayStats refreshToken={statsTick} onEntryClick={() => openEntry()} />
+      </div>
+      <Card size="sm" className="shrink-0">
         <CardContent className="flex flex-wrap items-center gap-2">
-          {(
-            [
-              ["5", "近 5 日"],
-              ["20", "近 20 日"],
-              ["month", "本月"],
-              ["all", "全部"],
-            ] as const
-          ).map(([key, label]) => (
-            <Button
-              key={key}
-              type="button"
-              variant={activePreset === key ? "default" : "outline"}
-              size="sm"
-              onClick={() => applyPreset(key)}
-            >
-              {label}
-            </Button>
-          ))}
-          <DatePicker
-            id="from"
-            mode="filter"
-            value={from}
-            dates={existingDates}
-            onChange={(v) => patchParams({ from: v })}
-          />
-          <DatePicker
-            id="to"
-            mode="filter"
-            value={to}
-            dates={existingDates}
-            onChange={(v) => patchParams({ to: v })}
-          />
+          <div className="flex items-center gap-1">
+            {(
+              [
+                ["5", "近 5 日"],
+                ["20", "近 20 日"],
+                ["month", "本月"],
+                ["all", "全部"],
+              ] as const
+            ).map(([key, label]) => (
+              <Button
+                key={key}
+                type="button"
+                variant={activePreset === key ? "default" : "outline"}
+                size="sm"
+                onClick={() => applyPreset(key)}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
+          <div
+            className="inline-flex h-7 max-md:h-11 shrink-0 items-center rounded-lg border border-border bg-background px-0.5 dark:border-input dark:bg-input/30"
+            role="group"
+            aria-label="日期范围"
+          >
+            <DatePicker
+              id="from"
+              mode="filter"
+              compact
+              value={from}
+              dates={existingDates}
+              displayValue={compactDateLabel(from, to)}
+              onChange={(v) => patchParams({ from: v })}
+            />
+            <span className="px-0.5 text-xs text-muted-foreground" aria-hidden>
+              –
+            </span>
+            <DatePicker
+              id="to"
+              mode="filter"
+              compact
+              value={to}
+              dates={existingDates}
+              displayValue={compactDateLabel(to, from)}
+              onChange={(v) => patchParams({ to: v })}
+            />
+          </div>
           <Popover open={strategyPickerOpen} onOpenChange={setStrategyPickerOpen}>
             <PopoverTrigger asChild>
               <Button
@@ -501,8 +524,8 @@ export default function MetricsChart() {
         </CardContent>
       </Card>
 
-      <Card size="sm">
-        <CardContent>
+      <Card size="sm" className="flex min-h-0 flex-1 flex-col">
+        <CardContent className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
           {loading ? (
             <ChartSkeleton />
           ) : rows.length === 0 ? (
@@ -529,16 +552,14 @@ export default function MetricsChart() {
               description="换个日期范围，或勾选其他交易策略。"
             />
           ) : (
-            <div className="max-h-[min(52vh,28rem)] overflow-hidden">
-              <ChartGrid
-                groups={visibleGroups}
-                metrics={metricDefs}
-                sealThreshold={sealThreshold}
-                isMobile={isMobile}
-                focusDate={focusDate}
-                onChartClick={onChartClick}
-              />
-            </div>
+            <ChartGrid
+              groups={visibleGroups}
+              metrics={metricDefs}
+              sealThreshold={sealThreshold}
+              isMobile={isMobile}
+              focusDate={focusDate}
+              onChartClick={onChartClick}
+            />
           )}
         </CardContent>
       </Card>

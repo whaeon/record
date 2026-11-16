@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react"
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react"
+import { cn } from "cn"
 import { Button } from "@/components/ui/button"
 import {
   Command,
@@ -37,6 +38,10 @@ function daysOfMonth(y: number, m: number): string[] {
   return list
 }
 
+function shortDate(iso: string): string {
+  return iso.length >= 10 ? iso.slice(5) : iso
+}
+
 type DatePickerProps = {
   value: string
   onChange: (date: string) => void
@@ -44,6 +49,9 @@ type DatePickerProps = {
   dates?: string[]
   id?: string
   disabled?: boolean
+  compact?: boolean
+  displayValue?: string
+  className?: string
 }
 
 export function DatePicker({
@@ -53,6 +61,9 @@ export function DatePicker({
   dates = [],
   id,
   disabled,
+  compact,
+  displayValue,
+  className,
 }: DatePickerProps) {
   const [open, setOpen] = useState(false)
   const parsed = parseISO(value)
@@ -101,20 +112,34 @@ export function DatePicker({
         <Button
           id={id}
           type="button"
-          variant="outline"
+          variant={compact ? "ghost" : "outline"}
+          size={compact ? "sm" : "default"}
           role="combobox"
           aria-expanded={open}
+          aria-label={value || "选择日期"}
           disabled={disabled}
-          className="w-full min-w-0 justify-between font-normal md:min-w-40"
+          className={cn(
+            "justify-between font-normal",
+            compact
+              ? "h-7 max-md:h-11 w-auto min-w-0 gap-1 px-1.5 tabular-nums"
+              : "w-full min-w-0 md:min-w-40",
+            className
+          )}
         >
-          <span>{value || "选择日期"}</span>
-          <Calendar className="size-4 opacity-50" />
+          <span className="tabular-nums">
+            {displayValue ?? (compact ? shortDate(value) || "日期" : value || "选择日期")}
+          </span>
+          {compact ? null : <Calendar className="size-4 opacity-50" />}
         </Button>
       </PopoverTrigger>
       <PopoverContent
         align="start"
         side="bottom"
-        className="w-[var(--radix-popover-trigger-width)] min-w-56 p-0"
+        className={
+          compact
+            ? "w-56 p-0"
+            : "w-[var(--radix-popover-trigger-width)] min-w-56 p-0"
+        }
       >
         <Command>
           <CommandInput

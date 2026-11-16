@@ -219,7 +219,7 @@ export default function ReviewNotes() {
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-[16rem_minmax(0,1fr)]">
+    <div className="grid min-h-0 flex-1 overflow-y-auto overscroll-contain gap-4 md:grid-cols-[16rem_minmax(0,1fr)]">
       <aside className="hidden min-h-[480px] rounded-xl border bg-card text-card-foreground md:block">
         {listPanel}
       </aside>
