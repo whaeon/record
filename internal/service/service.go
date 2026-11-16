@@ -419,13 +419,14 @@ func (s *Service) UpsertNote(ctx context.Context, date, content string) (*model.
 }
 
 func applyRates(m *model.StrategyMetric) {
-	if m.TotalPicks > 0 {
-		m.SealRate = float64(m.LimitUpCount) / float64(m.TotalPicks)
+	touch := m.LimitUpCount + m.FailedLimitCount
+	if touch <= 0 {
+		m.SealRate = 0
+		m.BreakRate = 0
+		return
 	}
-	total := m.LimitUpCount + m.FailedLimitCount
-	if total > 0 {
-		m.BreakRate = float64(m.FailedLimitCount) / float64(total)
-	}
+	m.SealRate = float64(m.LimitUpCount) / float64(touch)
+	m.BreakRate = float64(m.FailedLimitCount) / float64(touch)
 }
 
 func validateDate(date string) error {

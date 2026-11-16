@@ -132,14 +132,12 @@ function summarizeMetrics(rows: StrategyMetric[]): {
   const total_picks = rows.reduce((s, r) => s + r.total_picks, 0)
   const limit_up_count = rows.reduce((s, r) => s + r.limit_up_count, 0)
   const failed_limit_count = rows.reduce((s, r) => s + r.failed_limit_count, 0)
+  const touch = limit_up_count + failed_limit_count
   return {
     total_picks,
     limit_up_count,
-    seal_rate: total_picks > 0 ? limit_up_count / total_picks : 0,
-    break_rate:
-      limit_up_count + failed_limit_count > 0
-        ? failed_limit_count / (limit_up_count + failed_limit_count)
-        : 0,
+    seal_rate: touch > 0 ? limit_up_count / touch : 0,
+    break_rate: touch > 0 ? failed_limit_count / touch : 0,
   }
 }
 

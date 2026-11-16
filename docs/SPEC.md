@@ -116,8 +116,10 @@ src/pages, src/components, src/api
 - updated_at TEXT NOT NULL（ISO8601）
 
 ### 派生指标（不存库，后端实时计算）
-- seal_rate = total_picks > 0 ? limit_up_count / total_picks : 0
-- break_rate = (limit_up_count + failed_limit_count) > 0 ? failed_limit_count / (limit_up_count + failed_limit_count) : 0
+- 摸板总数 touch_count = limit_up_count + failed_limit_count（不存库）
+- seal_rate = touch_count > 0 ? limit_up_count / touch_count : 0
+- break_rate = touch_count > 0 ? failed_limit_count / touch_count : 0
+- total_picks 只表示筛出数，不作封板率/炸板率分母
 
 ### 未来可能新增（当前不建表，仅记录方向）
 - 交易日历（完整版含节假日维护）

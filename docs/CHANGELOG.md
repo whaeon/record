@@ -6,6 +6,7 @@
 
 ## 2026-11
 
+- 2026-11-16 ｜ T-31：封板率/炸板率按摸板重算 ｜ internal/service/service.go、frontend/src/pages/ReviewNotes.tsx、docs/SPEC.md ｜ 验收通过 ｜ 无 ｜ 派生指标改摸板分母：seal_rate/break_rate = 涨停或炸板 / (涨停+炸板)；total_picks 不再作分母；无 API 路径/参数变更、无存库字段变更
 - 2026-11-16 ｜ T-30：复盘默认预览 + 新建 ｜ frontend/src/{pages/ReviewNotes.tsx,lib/date.ts}、frontend/package.json、docs/SPEC.md ｜ 验收通过 ｜ 无 ｜ Markdown 栈增加 remark-breaks；无 API 路径/参数变更、无数据结构变更
 - 2026-11-16 ｜ T-29：策略×指标分组小图 ｜ frontend/src/{pages/MetricsChart.tsx,components/date-picker.tsx,App.tsx,index.css,pages/ReviewNotes.tsx} ｜ 验收通过 ｜ 无 ｜ 无 API 路径/参数变更、无数据结构变更
 - 2026-11-16 ｜ T-28：合并为策略回顾 ｜ frontend/src/{App.tsx,lib/nav.ts,pages/MetricsChart.tsx,pages/MetricsEntry.tsx,components/{today-stats,metrics-entry-dialog,strategy-manage-dialog}.tsx}、docs/SPEC.md ｜ 验收通过 ｜ 无 ｜ 无 API 路径/参数变更；模块划分改为策略回顾 + 复盘记录两导航；录入与策略 CRUD 改为页内弹窗；删除每日明细与独立 MetricsEntry 页
