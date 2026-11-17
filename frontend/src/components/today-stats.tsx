@@ -43,19 +43,41 @@ function StatCell({
     <div className="grid min-w-0 gap-1 rounded-lg border p-3">
       <div className="text-xs text-muted-foreground">{label}</div>
       <div className="flex items-center gap-1.5">
-        <span className="text-lg font-medium tabular-nums">{value}</span>
+        <span className="min-w-0 text-lg font-medium leading-tight break-words tabular-nums">{value}</span>
         {prev !== null ? <Arrow tone={tone} /> : null}
       </div>
     </div>
   )
 }
 
+function rangeBoardRates(
+  rows: StrategyMetric[],
+  selectedIds: number[]
+): { seal: number; brk: number } | null {
+  if (selectedIds.length === 0) return null
+  const ids = new Set(selectedIds)
+  let limit = 0
+  let failed = 0
+  for (const r of rows) {
+    if (!ids.has(r.strategy_id)) continue
+    limit += r.limit_up_count
+    failed += r.failed_limit_count
+  }
+  const touch = limit + failed
+  if (touch === 0) return { seal: 0, brk: 0 }
+  return { seal: limit / touch, brk: failed / touch }
+}
+
 export function TodayStats({
   refreshToken = 0,
   onEntryClick,
+  rangeRows = [],
+  selectedStrategyIds = [],
 }: {
   refreshToken?: number
   onEntryClick?: () => void
+  rangeRows?: StrategyMetric[]
+  selectedStrategyIds?: number[]
 }) {
   const today = todayISO()
   const prevDay = previousTradingDay(today)
@@ -122,6 +144,7 @@ export function TodayStats({
   const prevLimit = prevRow ? prevRow.limit_up_count : null
   const prevSeal = prevRow ? prevRow.seal_rate : null
   const prevBreak = prevRow ? prevRow.break_rate : null
+  const rangeMean = rangeBoardRates(rangeRows, selectedStrategyIds)
 
   const items = [
     {
@@ -138,13 +161,17 @@ export function TodayStats({
     },
     {
       label: "整体封板率",
-      value: formatPercent(todayRow.seal_rate),
+      value: rangeMean
+        ? `今日 ${formatPercent(todayRow.seal_rate)} · 均值 ${formatPercent(rangeMean.seal)}`
+        : formatPercent(todayRow.seal_rate),
       current: todayRow.seal_rate,
       prev: prevSeal,
     },
     {
       label: "整体炸板率",
-      value: formatPercent(todayRow.break_rate),
+      value: rangeMean
+        ? `今日 ${formatPercent(todayRow.break_rate)} · 均值 ${formatPercent(rangeMean.brk)}`
+        : formatPercent(todayRow.break_rate),
       current: todayRow.break_rate,
       prev: prevBreak,
     },

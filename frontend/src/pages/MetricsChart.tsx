@@ -360,7 +360,12 @@ export default function MetricsChart() {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
       <div className="shrink-0">
-        <TodayStats refreshToken={statsTick} onEntryClick={() => openEntry()} />
+        <TodayStats
+          refreshToken={statsTick}
+          onEntryClick={() => openEntry()}
+          rangeRows={rows}
+          selectedStrategyIds={selectedIds}
+        />
       </div>
       <Card size="sm" className="shrink-0">
         <CardContent className="flex flex-wrap items-center gap-2">

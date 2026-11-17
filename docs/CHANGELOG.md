@@ -6,6 +6,7 @@
 
 ## 2026-11
 
+- 2026-11-17 ｜ T-35：核心指标条区间均值 ｜ frontend/src/{components/today-stats.tsx,pages/MetricsChart.tsx} ｜ 验收通过 ｜ 无 ｜ 无 API 路径/参数变更、无数据结构变更；封板/炸板格增加图表区间+勾选策略的摸板加权均值
 - 2026-11-17 ｜ T-34：交易日历完整版 ｜ internal/calendar/{calendar.go,holidays.go}、internal/handler/handler.go、frontend/src/{api/calendar.ts,lib/date.ts,components/date-picker.tsx,components/metrics-entry-dialog.tsx,pages/MetricsChart.tsx,pages/ReviewNotes.tsx,App.tsx}、docs/SPEC.md ｜ 验收通过 ｜ 2027 按国务院放假通知推导、待交易所公告；2028 按放假办法+票交所预设；年/月改为弹层内按钮面板（暗色下原生 select 白底） ｜ 新增 GET /api/calendar?from=&to=；日期体系切到内置 A 股交易日历（2020-01-01～2028-12-31）
 - 2026-11-16 ｜ T-33：单用户登录门禁 ｜ internal/{auth/auth.go,db/db.go,handler/handler.go}、main.go、go.mod、Dockerfile、docker-compose.yml、README.md、docs/SPEC.md、frontend/src/{App.tsx,pages/Login.tsx,api/auth.ts,lib/http.ts,components/connection-banner.tsx,vite.config.ts} ｜ 验收通过 ｜ 无 ｜ 新增 POST /api/login、POST /api/logout、GET /api/me；users 增加 username、password_hash；Cookie 鉴权替换 DEFAULT_USER_ID 直通；不开放注册
 - 2026-11-16 ｜ T-32：图表策略名旁简述 ｜ frontend/src/pages/MetricsChart.tsx、README.md、docker-compose.yml ｜ 验收通过 ｜ 无 ｜ 无 API 路径/参数变更、无数据结构变更；README 补全 Compose 一键启动；三服务 restart: unless-stopped
