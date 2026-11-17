@@ -20,7 +20,7 @@
 - 初始账号：`INITIAL_USERNAME`（缺省 `admin`）、`INITIAL_PASSWORD`（必填）。仅当该用户 `password_hash` 仍为空时写入，已有密码则忽略环境变量
 - 会话：Cookie 名 `sid`，HttpOnly、SameSite=Lax、Path=/；签名密钥 `SESSION_SECRET`（缺省每次启动随机，重启后需重新登录）
 - 密码哈希：bcrypt（`golang.org/x/crypto/bcrypt`）
-- 备份：启动时与每小时检查；当日尚无文件则 `pg_dump` 到 `BACKUP_DIR`（缺省 `backups/`），文件名 `record-YYYY-MM-DD.sql`，保留最近 14 份；失败只记日志，不阻塞启动
+- 备份：启动时与每小时检查；当日尚无文件则 `pg_dump` 到 `BACKUP_DIR`（缺省 `backups/`），文件名 `record-YYYY-MM-DD.sql`，保留最近 14 份；失败只记日志，不阻塞启动。`pg_dump` 主版本须与服务器一致（Compose api 镜像安装 `postgresql-client-16`）
 - 编排：Docker Compose（db healthcheck `pg_isready`；api `depends_on: condition: service_healthy`；api 连库 5 次退避重试后退出，不得 panic）
 - 前端：React 19 + TypeScript + Vite
 - 样式：Tailwind CSS（dark mode 使用 class 策略）
