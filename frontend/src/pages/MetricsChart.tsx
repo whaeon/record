@@ -587,6 +587,7 @@ export default function MetricsChart() {
         open={entryOpen}
         onOpenChange={setEntryOpen}
         date={entryDate}
+        dates={existingDates}
         onSaved={onMetricsSaved}
         onNeedStrategies={() => setManageOpen(true)}
       />

@@ -1,3 +1,5 @@
+import { listCalendar } from "@/api/calendar"
+
 function pad(n: number): string {
   return String(n).padStart(2, "0")
 }
@@ -11,6 +13,53 @@ function parseISO(iso: string): Date {
 }
 
 const WEEKDAYS = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"]
+
+const tradingDays = new Set<string>()
+let ready = false
+let version = 0
+let inflight: Promise<void> | null = null
+const listeners = new Set<() => void>()
+
+export const CALENDAR_FROM = "2020-01-01"
+export const CALENDAR_TO = "2028-12-31"
+
+function emit() {
+  version += 1
+  listeners.forEach((fn) => fn())
+}
+
+export function subscribeCalendar(fn: () => void): () => void {
+  listeners.add(fn)
+  return () => {
+    listeners.delete(fn)
+  }
+}
+
+export function getCalendarVersion(): number {
+  return version
+}
+
+export function calendarReady(): boolean {
+  return ready
+}
+
+export async function loadCalendar(): Promise<void> {
+  if (ready && tradingDays.size > 0) return
+  if (inflight) return inflight
+  inflight = listCalendar(CALENDAR_FROM, CALENDAR_TO)
+    .then((days) => {
+      tradingDays.clear()
+      for (const d of days) {
+        if (d.is_trading_day) tradingDays.add(d.date)
+      }
+      ready = true
+      emit()
+    })
+    .finally(() => {
+      inflight = null
+    })
+  return inflight
+}
 
 export function todayISO(): string {
   return toISO(new Date())
@@ -39,8 +88,7 @@ export function formatPercent(rate: number): string {
 }
 
 export function isTradingDay(iso: string): boolean {
-  const day = parseISO(iso).getDay()
-  return day !== 0 && day !== 6
+  return tradingDays.has(iso)
 }
 
 function shiftISO(iso: string, days: number): string {
@@ -51,8 +99,11 @@ function shiftISO(iso: string, days: number): string {
 
 export function lastTradingDayOnOrBefore(iso: string): string {
   let cur = iso
-  while (!isTradingDay(cur)) cur = shiftISO(cur, -1)
-  return cur
+  for (let i = 0; i < 4000; i++) {
+    if (isTradingDay(cur)) return cur
+    cur = shiftISO(cur, -1)
+  }
+  return iso
 }
 
 export function previousTradingDay(iso: string): string {
@@ -63,7 +114,7 @@ export function lastNTradingDays(n: number, end = todayISO()): { from: string; t
   const to = lastTradingDayOnOrBefore(end)
   let from = to
   let count = 1
-  while (count < n) {
+  for (let i = 0; i < 4000 && count < n; i++) {
     from = shiftISO(from, -1)
     if (isTradingDay(from)) count += 1
   }
@@ -74,7 +125,10 @@ export function thisMonthTradingRange(today = todayISO()): { from: string; to: s
   const to = lastTradingDayOnOrBefore(today)
   const month = today.slice(0, 7)
   let from = `${month}-01`
-  while (!isTradingDay(from) && from.slice(0, 7) === month) from = shiftISO(from, 1)
+  for (let i = 0; i < 32 && from.slice(0, 7) === month; i++) {
+    if (isTradingDay(from)) break
+    from = shiftISO(from, 1)
+  }
   return { from, to }
 }
 

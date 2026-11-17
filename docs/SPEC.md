@@ -51,7 +51,7 @@ src/pages, src/components, src/api
 
 ## 为未来预留的架构决策（当前不实现，但不得设计成阻碍它们）
 - 指标数据存在「手动录入」与「自动计算」两种来源，数据模型需能区分（见下文 source 字段）。
-- 日期体系未来将走交易日历，而非自然日。
+- 日期体系走内置 A 股交易日历（周末 + 法定节假日对应休市），录入默认日期仍为当天自然日。
 - 导航栏右侧为工具区，未来扩展通知铃铛与任务状态，业务菜单不占右侧。
 - 策略的「人类可读说明」与「可执行策略参数」在概念上分离，后者未来另开字段或另开表，不混入 current_detail。
 
@@ -127,8 +127,14 @@ src/pages, src/components, src/api
 - break_rate = touch_count > 0 ? failed_limit_count / touch_count : 0
 - total_picks 只表示筛出数，不作封板率/炸板率分母
 
+### 交易日历（内置，非用户 schema）［已确认］
+- 覆盖 2020-01-01～2028-12-31 上交所/深交所交易日
+- 周末休市；国务院放假安排对应的 A 股休市日休市；调休后的工作日为交易日（周末补班仍休市）
+- 数据随仓库发布，只读内置表，启动不依赖外网
+- 规则：录入默认日期 = 打开时的当天（自然日），不改为上一交易日
+- 规则：上一交易日 / 近 N 交易日 / 本月区间均按本日历计算
+
 ### 未来可能新增（当前不建表，仅记录方向）
-- 交易日历（完整版含节假日维护）
 - 策略可执行参数（结构化配置）
 - 通知事件与通知规则
 - 自动化任务执行记录
@@ -155,6 +161,9 @@ src/pages, src/components, src/api
 - GET /api/notes/:date ［已实现］　不存在返回 200 + 空 content
 - PUT /api/notes/:date ［已实现］　upsert
 - GET /api/notes ［待实现］　复盘记录列表（date、摘要、updated_at），date 倒序
+
+### 日历
+- GET /api/calendar?from=&to= ［已实现］　返回 `{date, is_trading_day}` 列表；from/to 缺省为 2020-01-01 / 2028-12-31；非法日期 400
 
 ### 认证
 - POST /api/login ［已实现］　body `{username, password}`；成功 Set-Cookie HttpOnly、SameSite=Lax、Path=/，返回当前用户；失败 401

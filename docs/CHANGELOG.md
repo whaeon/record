@@ -1,11 +1,12 @@
 # CHANGELOG · 迭代变更记录
 
-> 最后更新：2026-11-16 ｜ 只增不改，最新记录在最上方。
+> 最后更新：2026-11-17 ｜ 只增不改，最新记录在最上方。
 > 记录格式：`日期 ｜ 任务ID：名称 ｜ 改动文件 ｜ 验收结果 ｜ 已知问题 ｜ 契约变更（如有）`
 > 超过约 300 行时，把更早的记录按年归档到 docs/archive/。
 
 ## 2026-11
 
+- 2026-11-17 ｜ T-34：交易日历完整版 ｜ internal/calendar/{calendar.go,holidays.go}、internal/handler/handler.go、frontend/src/{api/calendar.ts,lib/date.ts,components/date-picker.tsx,components/metrics-entry-dialog.tsx,pages/MetricsChart.tsx,pages/ReviewNotes.tsx,App.tsx}、docs/SPEC.md ｜ 验收通过 ｜ 2027 按国务院放假通知推导、待交易所公告；2028 按放假办法+票交所预设；年/月改为弹层内按钮面板（暗色下原生 select 白底） ｜ 新增 GET /api/calendar?from=&to=；日期体系切到内置 A 股交易日历（2020-01-01～2028-12-31）
 - 2026-11-16 ｜ T-33：单用户登录门禁 ｜ internal/{auth/auth.go,db/db.go,handler/handler.go}、main.go、go.mod、Dockerfile、docker-compose.yml、README.md、docs/SPEC.md、frontend/src/{App.tsx,pages/Login.tsx,api/auth.ts,lib/http.ts,components/connection-banner.tsx,vite.config.ts} ｜ 验收通过 ｜ 无 ｜ 新增 POST /api/login、POST /api/logout、GET /api/me；users 增加 username、password_hash；Cookie 鉴权替换 DEFAULT_USER_ID 直通；不开放注册
 - 2026-11-16 ｜ T-32：图表策略名旁简述 ｜ frontend/src/pages/MetricsChart.tsx、README.md、docker-compose.yml ｜ 验收通过 ｜ 无 ｜ 无 API 路径/参数变更、无数据结构变更；README 补全 Compose 一键启动；三服务 restart: unless-stopped
 - 2026-11-16 ｜ T-31：封板率/炸板率按摸板重算 ｜ internal/service/service.go、frontend/src/pages/ReviewNotes.tsx、docs/SPEC.md ｜ 验收通过 ｜ 无 ｜ 派生指标改摸板分母：seal_rate/break_rate = 涨停或炸板 / (涨停+炸板)；total_picks 不再作分母；无 API 路径/参数变更、无存库字段变更

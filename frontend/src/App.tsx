@@ -14,6 +14,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { subscribeUnauthorized } from "@/lib/http"
+import { loadCalendar } from "@/lib/date"
 import MetricsChart from "@/pages/MetricsChart"
 import { Login } from "@/pages/Login"
 import ReviewNotes from "@/pages/ReviewNotes"
@@ -32,6 +33,7 @@ function App() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [me, setMe] = useState<Me | null>(null)
   const [authReady, setAuthReady] = useState(false)
+  const [calReady, setCalReady] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -51,6 +53,21 @@ function App() {
   }, [])
 
   useEffect(() => subscribeUnauthorized(() => setMe(null)), [])
+
+  useEffect(() => {
+    if (!me) return
+    let cancelled = false
+    loadCalendar()
+      .then(() => {
+        if (!cancelled) setCalReady(true)
+      })
+      .catch(() => {
+        if (!cancelled) setCalReady(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [me])
 
   async function onLogout() {
     try {
@@ -74,6 +91,14 @@ function App() {
         <Login onSuccess={setMe} />
         <Toaster />
       </>
+    )
+  }
+
+  if (!calReady) {
+    return (
+      <div className="flex h-dvh items-center justify-center bg-background text-muted-foreground">
+        加载中…
+      </div>
     )
   }
 

@@ -647,6 +647,7 @@ export default function ReviewNotes() {
             <DatePicker
               id="new-note-date"
               mode="entry"
+              tradingOnly={false}
               value={newDate}
               onChange={setNewDate}
             />

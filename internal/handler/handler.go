@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/whaeon/record/internal/auth"
+	"github.com/whaeon/record/internal/calendar"
 	"github.com/whaeon/record/internal/model"
 	"github.com/whaeon/record/internal/service"
 )
@@ -50,6 +51,8 @@ func (h *Handler) Register(r *gin.Engine, mws ...gin.HandlerFunc) {
 
 	api.GET("/export/metrics.csv", h.ExportMetricsCSV)
 	api.GET("/export/notes.md", h.ExportNotesZip)
+
+	api.GET("/calendar", h.ListCalendar)
 }
 
 type strategyRequest struct {
@@ -254,6 +257,15 @@ func (h *Handler) GetNote(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, n)
+}
+
+func (h *Handler) ListCalendar(c *gin.Context) {
+	days, err := calendar.Range(c.Query("from"), c.Query("to"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, days)
 }
 
 func (h *Handler) ExportMetricsCSV(c *gin.Context) {

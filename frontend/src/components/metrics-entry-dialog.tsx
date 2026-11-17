@@ -91,12 +91,14 @@ export function MetricsEntryDialog({
   open,
   onOpenChange,
   date: initialDate,
+  dates = [],
   onSaved,
   onNeedStrategies,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   date?: string
+  dates?: string[]
   onSaved?: () => void
   onNeedStrategies?: () => void
 }) {
@@ -368,7 +370,7 @@ export function MetricsEntryDialog({
             <div className="grid gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="batch-date">日期</Label>
-                <DatePicker id="batch-date" mode="entry" value={batchDate} onChange={setBatchDate} />
+                <DatePicker id="batch-date" mode="entry" value={batchDate} dates={dates} onChange={setBatchDate} />
               </div>
               <ul className="grid gap-3 md:hidden">
                 {activeStrategies.map((s) => {
@@ -519,7 +521,7 @@ export function MetricsEntryDialog({
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="date">日期</Label>
-                <DatePicker id="date" mode="entry" value={date} onChange={setDate} />
+                <DatePicker id="date" mode="entry" value={date} dates={dates} onChange={setDate} />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="total_picks">筛出票数</Label>
