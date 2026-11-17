@@ -11,6 +11,7 @@ export default defineConfig({
     },
   },
   server: {
+    host: true,
     allowedHosts: ['.monkeycode-ai.online'],
     proxy: {
       '/api': {

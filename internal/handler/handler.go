@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/whaeon/record/internal/auth"
 	"github.com/whaeon/record/internal/model"
 	"github.com/whaeon/record/internal/service"
 )
@@ -16,6 +17,13 @@ type Handler struct {
 
 func New(svc *service.Service) *Handler {
 	return &Handler{svc: svc}
+}
+
+func (h *Handler) RegisterPublic(r *gin.Engine, a *auth.CookieAuth) {
+	api := r.Group("/api")
+	api.POST("/login", a.HandleLogin)
+	api.POST("/logout", a.HandleLogout)
+	api.GET("/me", a.HandleMe)
 }
 
 func (h *Handler) Register(r *gin.Engine, mws ...gin.HandlerFunc) {

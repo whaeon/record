@@ -6,7 +6,7 @@
 > 接口标注：［已实现］当前生效 ｜［待实现］已定义、尚未落地
 
 ## 运行形态
-Windows 本地、当前单用户、非公网部署。当前为 Docker Compose 三容器 Web 形态（db / api / web），浏览器访问 web。数据按用户 schema 物理隔离；本地通过 `DEFAULT_USER_ID` 注入默认用户，前端无需登录。未来可选 Wails 打包为桌面应用（PAUSED）。
+当前单用户、公网可部署。Docker Compose 三容器 Web 形态（db / api / web），浏览器访问 web。改数据必须登录；不开放注册。账号由启动环境变量写入：`INITIAL_USERNAME`（缺省 `admin`）+ `INITIAL_PASSWORD`（必填，空则 api 拒绝启动）。`DEFAULT_USER_ID` 仅用于首次建 schema 的用户 id（缺省 1），不再作为鉴权旁路。未来可选 Wails 打包为桌面应用（PAUSED）。
 
 ## 技术栈登记
 
@@ -16,7 +16,10 @@ Windows 本地、当前单用户、非公网部署。当前为 Docker Compose �
 - 后端：Go 1.25 + Gin
 - 数据库：PostgreSQL 16；驱动 `github.com/jackc/pgx/v5/stdlib`（database/sql，禁止 ORM）
 - 连接：环境变量 `DATABASE_URL`；缺省 `postgres://record:record@127.0.0.1:5432/record?sslmode=disable`
-- 默认用户：环境变量 `DEFAULT_USER_ID`；缺省 `1`。auth 中间件当前直接返回该用户，前端免登录
+- 默认用户 id：环境变量 `DEFAULT_USER_ID`；缺省 `1`。仅用于首次创建 `public.users` 行与 `user_<id>` schema
+- 初始账号：`INITIAL_USERNAME`（缺省 `admin`）、`INITIAL_PASSWORD`（必填）。仅当该用户 `password_hash` 仍为空时写入，已有密码则忽略环境变量
+- 会话：Cookie 名 `sid`，HttpOnly、SameSite=Lax、Path=/；签名密钥 `SESSION_SECRET`（缺省每次启动随机，重启后需重新登录）
+- 密码哈希：bcrypt（`golang.org/x/crypto/bcrypt`）
 - 备份：启动时与每小时检查；当日尚无文件则 `pg_dump` 到 `BACKUP_DIR`（缺省 `backups/`），文件名 `record-YYYY-MM-DD.sql`，保留最近 14 份；失败只记日志，不阻塞启动
 - 编排：Docker Compose（db healthcheck `pg_isready`；api `depends_on: condition: service_healthy`；api 连库 5 次退避重试后退出，不得 panic）
 - 前端：React 19 + TypeScript + Vite
@@ -38,7 +41,7 @@ Echo / Ent / MongoDB / Ant Design / MUI / Chakra / 任何 WYSIWYG 富文本编�
 ## 模块划分
 1. 策略回顾：今日指标条 + 历史图表工作台；指标录入与策略 CRUD 为页内弹窗，无独立策略页、无每日明细表
 2. 复盘记录：按日期的 Markdown 编辑与预览，左侧记录列表
-3. 全局：三主题切换（跟随系统/黑夜/白天，默认跟随系统）；导航两项：策略回顾 / 复盘记录
+3. 全局：三主题切换（跟随系统/黑夜/白天，默认跟随系统）；导航两项：策略回顾 / 复盘记录；未登录进入登录页，业务页不可用；导航提供退出
 
 ## 后端分层
 handler（路由与参数校验） / service（业务与计算） / repository（数据访问）
@@ -60,20 +63,23 @@ src/pages, src/components, src/api
 
 ## 多用户架构［已确认］
 - 每个用户对应一个独立 PostgreSQL schema，命名规则 `user_<id>`（例如 `user_1`）。
-- `public.users` 存用户元数据；业务四表（strategies / strategy_revisions / strategy_metrics / review_notes）建在该用户 schema 内。
+- `public.users` 存用户元数据与登录凭证；业务四表（strategies / strategy_revisions / strategy_metrics / review_notes）建在该用户 schema 内。
 - 建表脚本参数化：传入 schema 名执行，repository 不硬编码 schema 名。
 - 请求级 `search_path` 指向当前用户 schema；数据访问走当前请求绑定的连接。
-- auth 为可插拔中间件：当前实现读取 `DEFAULT_USER_ID` 并直接视为已登录。未来替换为真实认证时只换中间件，handler / service 业务逻辑不动。
-- 启动时若默认用户不存在，自动插入 `public.users`、创建 `user_<id>` schema 并建表。
-- 切换 `DEFAULT_USER_ID` 并重启 api 即切换当前用户数据空间，各 schema 互不可见。
+- auth 为可插拔中间件：Cookie 会话鉴权；除 `POST /api/login` 外全部 `/api/*` 未登录返回 401。handler / service 业务逻辑不感知认证方式。
+- 不开放注册。启动时若默认用户不存在，插入 `public.users`、创建 `user_<id>` schema 并建表；`password_hash` 为空时用 `INITIAL_PASSWORD` 写入 bcrypt 哈希。
+- `GET /api/me` 返回当前登录用户；未登录 401。
 
 ## 数据模型
 
 ### users（用户，public schema）［已确认］
 - id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY
-- name TEXT NOT NULL
+- name TEXT NOT NULL　—— 显示名
+- username TEXT NOT NULL UNIQUE
+- password_hash TEXT NOT NULL DEFAULT ''　—— bcrypt；空表示尚未写入初始密码
 - created_at TEXT NOT NULL（ISO8601）
-- 规则：业务数据不落在本表；本表仅作用户身份与 schema 对应
+- 规则：业务数据不落在本表；本表仅作用户身份、登录凭证与 schema 对应
+- 规则：不提供注册接口；密码不以明文写入仓库或日志
 
 ### strategies（交易策略，可改名）［已确认］
 - id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY
@@ -149,6 +155,12 @@ src/pages, src/components, src/api
 - GET /api/notes/:date ［已实现］　不存在返回 200 + 空 content
 - PUT /api/notes/:date ［已实现］　upsert
 - GET /api/notes ［待实现］　复盘记录列表（date、摘要、updated_at），date 倒序
+
+### 认证
+- POST /api/login ［已实现］　body `{username, password}`；成功 Set-Cookie HttpOnly、SameSite=Lax、Path=/，返回当前用户；失败 401
+- POST /api/logout ［已实现］　清除 Cookie
+- GET  /api/me ［已实现］　返回当前用户 `{id, username, name}`；未登录 401
+- 除 login 外全部 `/api/*` 走 Cookie 鉴权；未登录 401。无注册接口
 
 ### 导出
 - GET /api/export/metrics.csv ［已实现］　当前用户 schema 全部指标，CSV 含表头（UTF-8 BOM）

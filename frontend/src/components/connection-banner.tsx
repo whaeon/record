@@ -7,7 +7,7 @@ export function ConnectionBanner() {
   useEffect(() => subscribeConnection(setOk), [])
 
   useEffect(() => {
-    void apiFetch("/api/strategies").catch(() => {})
+    void apiFetch("/api/me").catch(() => {})
   }, [])
 
   if (ok) return null

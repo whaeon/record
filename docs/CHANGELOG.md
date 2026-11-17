@@ -6,6 +6,7 @@
 
 ## 2026-11
 
+- 2026-11-16 ｜ T-33：单用户登录门禁 ｜ internal/{auth/auth.go,db/db.go,handler/handler.go}、main.go、go.mod、Dockerfile、docker-compose.yml、README.md、docs/SPEC.md、frontend/src/{App.tsx,pages/Login.tsx,api/auth.ts,lib/http.ts,components/connection-banner.tsx,vite.config.ts} ｜ 验收通过 ｜ 无 ｜ 新增 POST /api/login、POST /api/logout、GET /api/me；users 增加 username、password_hash；Cookie 鉴权替换 DEFAULT_USER_ID 直通；不开放注册
 - 2026-11-16 ｜ T-32：图表策略名旁简述 ｜ frontend/src/pages/MetricsChart.tsx、README.md、docker-compose.yml ｜ 验收通过 ｜ 无 ｜ 无 API 路径/参数变更、无数据结构变更；README 补全 Compose 一键启动；三服务 restart: unless-stopped
 - 2026-11-16 ｜ T-31：封板率/炸板率按摸板重算 ｜ internal/service/service.go、frontend/src/pages/ReviewNotes.tsx、docs/SPEC.md ｜ 验收通过 ｜ 无 ｜ 派生指标改摸板分母：seal_rate/break_rate = 涨停或炸板 / (涨停+炸板)；total_picks 不再作分母；无 API 路径/参数变更、无存库字段变更
 - 2026-11-16 ｜ T-30：复盘默认预览 + 新建 ｜ frontend/src/{pages/ReviewNotes.tsx,lib/date.ts}、frontend/package.json、docs/SPEC.md ｜ 验收通过 ｜ 无 ｜ Markdown 栈增加 remark-breaks；无 API 路径/参数变更、无数据结构变更

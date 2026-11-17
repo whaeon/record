@@ -11,5 +11,5 @@ RUN apt-get update \
 	&& rm -rf /var/lib/apt/lists/*
 COPY --from=build /out/api /api
 EXPOSE 8080
-HEALTHCHECK --interval=5s --timeout=3s --retries=10 CMD curl -fsS http://127.0.0.1:8080/api/strategies || exit 1
+HEALTHCHECK --interval=5s --timeout=3s --retries=10 CMD ["sh", "-c", "curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/api/me | grep -q 401"]
 CMD ["/api"]

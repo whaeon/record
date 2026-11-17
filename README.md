@@ -8,11 +8,14 @@
 
 需要本机已装 Docker 与 Compose v2。
 
+必须设置 `INITIAL_PASSWORD`，否则 api 拒绝启动。
+
 ```bash
+export INITIAL_PASSWORD=change-me
 docker compose up --build -d
 ```
 
-浏览器打开 http://localhost
+浏览器打开 http://localhost ，用 `INITIAL_USERNAME`（缺省 `admin`）和 `INITIAL_PASSWORD` 登录。不开放注册。
 
 | 服务 | 端口 | 说明 |
 |---|---|---|
@@ -20,7 +23,7 @@ docker compose up --build -d
 | api | 8080 | 后端 |
 | db | 5432 | PostgreSQL 16，库/用户/密码均为 `record` |
 
-数据在 Docker volume `pgdata`，备份目录挂载 `./backups`。默认用户 `DEFAULT_USER_ID=1`，前端免登录。
+数据在 Docker volume `pgdata`，备份目录挂载 `./backups`。`DEFAULT_USER_ID` 仅用于首次建 schema（缺省 1），不再免登录。已有密码后重启忽略环境变量中的密码。
 
 ```bash
 docker compose ps
@@ -53,6 +56,8 @@ postgres://record:record@db:5432/record?sslmode=disable
 ```bash
 export DATABASE_URL=postgres://record:record@127.0.0.1:5432/record?sslmode=disable
 export DEFAULT_USER_ID=1
+export INITIAL_USERNAME=admin
+export INITIAL_PASSWORD=change-me
 go run .
 ```
 

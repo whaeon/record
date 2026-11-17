@@ -9,37 +9,11 @@
 
 | ID | 任务 | 类别 | 依赖 |
 |---|---|---|---|
-| T-33 | 单用户登录门禁 | P0 安全 | — |
 | T-34 | 交易日历完整版 | P0 数据 | — |
 | T-35 | 核心指标条区间均值 | P1 界面 | T-34 |
 | T-36 | 录入策略防选错 | P1 界面 | — |
 
 ## 任务简报
-
-### T-33 · 单用户登录门禁
-
-**目标**：改 SPEC「运行形态」「多用户架构」「users 表」与 API：公网部署必须登录才能改数据。替换 `DEFAULT_USER_ID` 直通中间件；不开放注册。
-
-**范围边界**
-- 允许修改：docs/SPEC.md 运行形态 / 多用户架构 / users / API；internal/auth 中间件实现；users 表字段；login/logout/me 接口；前端登录页与 401 跳转；docker-compose.yml / README 环境变量
-- 禁止修改：业务四表结构；handler / service 业务计算（只换认证来源）
-- 禁止操作：不得开放注册接口；不得把密码明文写入仓库或日志
-
-**关键约束**
-1. 不提供注册。账号由启动时环境变量写入：`INITIAL_USERNAME`（缺省 `admin`）+ `INITIAL_PASSWORD`（必填，空则 api 拒绝启动）。仅当该用户尚无 password_hash 时写入，已有密码则忽略环境变量。
-2. `public.users` 增加 `username TEXT NOT NULL UNIQUE`、`password_hash TEXT NOT NULL DEFAULT ''`；`name` 仍作显示名。
-3. `POST /api/login` body `{username, password}`；成功 Set-Cookie HttpOnly、SameSite=Lax、Path=/；失败 401。`POST /api/logout` 清 Cookie。`GET /api/me` 返回当前用户（未登录 401）。
-4. 除 login 外全部 `/api/*` 走 Cookie 鉴权；未登录 401。前端未登录进登录页，业务页不可用。导航提供退出。
-5. 去掉 Compose 场景下的免登录直通。`DEFAULT_USER_ID` 不再作为鉴权旁路（可保留仅用于首次建 schema 的用户 id，缺省 1）。密码哈希用 bcrypt。
-
-**验收标准（逐条自检并汇报）**
-1. 未带 Cookie 访问 `/api/strategies` 返回 401；登录后可读写。
-2. 错误密码 401；退出后再访问 401。
-3. 仓库与日志无明文密码；无注册入口。
-4. `docker compose` 文档写明 `INITIAL_PASSWORD`。
-5. 暗色登录页正常。
-
-**完成后**：停止等待验收。清理只在人工「T-33 验收通过」后按 WORKFLOW 执行。
 
 ### T-34 · 交易日历完整版
 

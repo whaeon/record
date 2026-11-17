@@ -41,9 +41,30 @@ export function isConnectionError(err: unknown): boolean {
 
 const GATEWAY = new Set([502, 503, 504])
 
+type UnauthorizedListener = () => void
+const unauthorizedListeners = new Set<UnauthorizedListener>()
+
+export function subscribeUnauthorized(fn: UnauthorizedListener): () => void {
+  unauthorizedListeners.add(fn)
+  return () => {
+    unauthorizedListeners.delete(fn)
+  }
+}
+
+function notifyUnauthorized(input: RequestInfo | URL) {
+  const url = typeof input === "string" ? input : input instanceof URL ? input.pathname : ""
+  if (url.includes("/api/login")) {
+    return
+  }
+  unauthorizedListeners.forEach((fn) => fn())
+}
+
 export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   try {
-    const res = await fetch(input, init)
+    const res = await fetch(input, { credentials: "include", ...init })
+    if (res.status === 401) {
+      notifyUnauthorized(input)
+    }
     const ct = res.headers.get("content-type") ?? ""
     if (GATEWAY.has(res.status) || (res.status >= 500 && !ct.includes("application/json"))) {
       setConnected(false)

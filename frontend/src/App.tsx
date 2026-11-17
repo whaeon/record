@@ -1,6 +1,7 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom"
-import { LineChart, Menu, NotebookPen } from "lucide-react"
+import { LineChart, LogOut, Menu, NotebookPen } from "lucide-react"
+import { getMe, logout, type Me } from "@/api/auth"
 import { ConnectionBanner } from "@/components/connection-banner"
 import { ExportMenu } from "@/components/export-menu"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -12,7 +13,9 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
+import { subscribeUnauthorized } from "@/lib/http"
 import MetricsChart from "@/pages/MetricsChart"
+import { Login } from "@/pages/Login"
 import ReviewNotes from "@/pages/ReviewNotes"
 
 const navItems = [
@@ -27,6 +30,52 @@ function ChartRedirect() {
 
 function App() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [me, setMe] = useState<Me | null>(null)
+  const [authReady, setAuthReady] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    getMe()
+      .then((user) => {
+        if (!cancelled) setMe(user)
+      })
+      .catch(() => {
+        if (!cancelled) setMe(null)
+      })
+      .finally(() => {
+        if (!cancelled) setAuthReady(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => subscribeUnauthorized(() => setMe(null)), [])
+
+  async function onLogout() {
+    try {
+      await logout()
+    } finally {
+      setMe(null)
+    }
+  }
+
+  if (!authReady) {
+    return (
+      <div className="flex h-dvh items-center justify-center bg-background text-muted-foreground">
+        加载中…
+      </div>
+    )
+  }
+
+  if (!me) {
+    return (
+      <>
+        <Login onSuccess={setMe} />
+        <Toaster />
+      </>
+    )
+  }
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-background text-foreground">
@@ -54,6 +103,9 @@ function App() {
           <div className="hidden items-center justify-self-end gap-1 md:flex">
             <ExportMenu />
             <ThemeToggle />
+            <Button type="button" variant="ghost" size="icon" aria-label="退出" onClick={() => void onLogout()}>
+              <LogOut />
+            </Button>
           </div>
           <Button
             type="button"
@@ -101,6 +153,13 @@ function App() {
             <div className="flex items-center justify-between gap-3">
               <span className="text-sm text-muted-foreground">主题</span>
               <ThemeToggle />
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm text-muted-foreground">账号</span>
+              <Button type="button" variant="outline" onClick={() => void onLogout()}>
+                <LogOut />
+                退出
+              </Button>
             </div>
           </div>
         </SheetContent>
